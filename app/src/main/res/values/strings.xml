@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">FindMe</string>
+    <string name="btn_Registrarse">Registrarse</string>
+    <string name="btn_iniciar_sesion">Iniciar Sesión</string>
+    <string name="btn_iniciar_sesion_como_invi">Toca aquí para comenzar sesión como invitado</string>
+    <string name="title_activity_main_map">MainActivityMap</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_login">Sign in</string>
+
+    <!-- Strings related to login and registry -->
+    <string name="prompt_CI">Cédula de Identidad</string>
+    <string name="prompt_password">Password (optional)</string>
+    <string name="prompt_names">Nombres</string>
+    <string name="prompt_last_names">Apellidos</string>
+    <string name="prompt_DINASED_number">Número único de DINASED</string>
+    <string name="prompt_tipo_usuario">Número único de DINASED</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="error_invalid_email">This email address is invalid</string>
+    <string name="error_invalid_password">This password is too short</string>
+    <string name="error_incorrect_password">This password is incorrect</string>
+    <string name="error_field_required">This field is required</string>
+    <string name="permission_rationale">"Contacts permissions are needed for providing email
+        completions."
+    </string>
+    <string name="title_activity_registro_forum">Sign in</string>
+
+    <!-- Strings related to login -->
+    <string name="prompt_email">Email</string>
+    <string name="title_activity_maps">Map</string>
+</resources>
