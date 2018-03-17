@@ -7,9 +7,8 @@
     android:id="@+id/drawer_layout_main"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     android:fitsSystemWindows="true"
-    tools:openDrawer="start"
-    tools:context="ec.edu.epn.findme.MainActivityMap"
-    tools:showIn="@layout/app_bar_main_activity_map">
+    tools:openDrawer="start">
+
 
     <include
         layout="@layout/app_bar_main_activity_map"
