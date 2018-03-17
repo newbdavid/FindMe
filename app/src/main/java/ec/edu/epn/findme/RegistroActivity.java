@@ -19,7 +19,7 @@ public class RegistroActivity extends AppCompatActivity {
     }
 
     public void entrarComoInvitado(View view) {
-        Intent i = new Intent(this,MainActivityMap.class);
+        Intent i = new Intent(this,MapsActivity.class);
         startActivity(i);
     }
 

@@ -22,6 +22,6 @@
         app:headerLayout="@layout/nav_header_main_activity_map"
         app:menu="@menu/activity_main_map_drawer" />
 
-    
+
 
 </android.support.v4.widget.DrawerLayout>

@@ -1,5 +1,6 @@
 package ec.edu.epn.findme;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -12,6 +13,7 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+
 
 public class MainActivityMap extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -41,6 +43,15 @@ public class MainActivityMap extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+       /* MapsActivity mapsActivity = (MapsActivity) getSupportFragmentManager().findFragmentById(R.id.map);
+        //Fragment fragmentMapsActivity = (Fragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        android.support.v4.app.FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+        fragmentTransaction.add(R.id.nav_view, fragmentMapsActivity);
+        fragmentTransaction.commit();*/
+        //View viewMap = (View) findViewById(R.id.map);
+        Intent i = new Intent(this,MapsActivity.class);
+        startActivity(i);
     }
 
     @Override
