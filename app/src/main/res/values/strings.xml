@@ -32,4 +32,9 @@
     <!-- Strings related to login -->
     <string name="prompt_email">Email</string>
     <string name="title_activity_maps">Map</string>
+    <!-- Strings related to MainActivity
+     -->
+    <string name="turn_on_gps">Please enable Location to start tracking</string>
+    <string name="accept">Accept</string>
+    <string name="cancel">Cancel</string>
 </resources>
