@@ -22,7 +22,9 @@ import android.view.View;
 
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
@@ -34,14 +36,19 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
+
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, NavigationView.OnNavigationItemSelectedListener {
 
+    private FloatingActionButton fab;
     private static final int DEFAULT_ZOOM = 10;
+    private static final int NEAR_ZOOM = 16;
     private static final int NORMAL_LOCATION_INTERVAL = 15000;
     private static final int FASTEST_PERMITED_LOCATION_INTERVAL = 5000;
     private static final String TAG = MapsActivity.class.getSimpleName();
@@ -50,11 +57,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private LocationRequest mLocationRequest;
-
-
+    private LocationCallback mLocationCallback;
+    private boolean isTracking = false;
+    private Polyline firstPolyline;
     private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
 
     private Location mLastKnownLocation;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,12 +73,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startTrackingPosition();
-                Snackbar.make(view, "Comienza a rastrear su posición", Snackbar.LENGTH_LONG)
+                Snackbar.make(view, isTracking?"Ha dejado de rastrear su posicion":"Comienza a rastrear su posición", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
             }
         });
@@ -87,6 +96,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
 
     }
 
@@ -106,6 +116,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
         }
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String permissions[],
@@ -122,6 +133,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         updateLocationUI();
     }
+
     private void updateLocationUI() {
         if (mMap == null) {
             return;
@@ -136,7 +148,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //mLastKnownLocation = null;
                 getLocationPermission();
             }
-        } catch (SecurityException e)  {
+        } catch (SecurityException e) {
             Log.e("Exception: %s", e.getMessage());
         }
     }
@@ -155,14 +167,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (task.isSuccessful()) {
                             // Set the map's camera position to the current location of the device.
                             mLastKnownLocation = task.getResult();
-                            if(mLastKnownLocation != null){
-                                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                                        new LatLng(mLastKnownLocation.getLatitude(),
-                                                mLastKnownLocation.getLongitude()), DEFAULT_ZOOM));
+                            if (mLastKnownLocation != null) {
+                                LatLng actualPosition = new LatLng(mLastKnownLocation.getLatitude(),
+                                        mLastKnownLocation.getLongitude());
+                                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
+                                mMap.animateCamera(cameraUpdate);
+
                                 /*mMap.addMarker(new MarkerOptions().position(new LatLng(mLastKnownLocation.getLatitude(),
                                         mLastKnownLocation.getLongitude()))).setTitle("Aqui estoy");
                                 Log.d(TAG, "Nuevo Marker!");*/
-                            }else{
+                            } else {
                                 Log.d(TAG, "Current location is null. Using defaults.");
                                 Log.e(TAG, "Exception: %s", task.getException());
                                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
@@ -179,7 +193,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 });
             }
-        } catch(SecurityException e)  {
+        } catch (SecurityException e) {
             Log.e("Exception: %s", e.getMessage());
         }
     }
@@ -261,7 +275,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Add a marker in Sydney and move the camera
         LatLng sydney = new LatLng(-0.196, -78.511);
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(sydney,10);
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(sydney, 10);
         mMap.animateCamera(cameraUpdate);
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
@@ -280,11 +294,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // location requests here.
                 // ...
                 getDeviceLocation();
+
+                startLocationUpdates();
+                Log.d(TAG, "Muestra posicion actual!");
+                if(isTracking == false){
+                    startLocationUpdates();
+                    fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),ic_stop_navigation));
+                    isTracking = true;
+                }else if (isTracking != false) {
+                    fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),R.drawable.ic_navigation_start));
+                    isTracking = false;
+                }
+
             }
         });
 
         task.addOnFailureListener(this, new OnFailureListener() {
             TurnOnGPSDialog turnOnGPSDialog = new TurnOnGPSDialog();
+
             @Override
             public void onFailure(@NonNull Exception e) {
                 if (e instanceof ResolvableApiException) {
@@ -313,5 +340,44 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
+    private void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            Task locationResult = mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
+            mLocationCallback = new LocationCallback() {
+                @Override
+                public void onLocationResult(final LocationResult locationResult) {
 
+                    if (locationResult == null) {
+                        return;
+                    }
+              /*new LatLng(locationResult.getLocations().get(1).getLatitude(),locationResult.getLocations().get(1).getLongitude());
+              Iterator<Location> iterator = locationResult.getLocations().iterator();
+              while(iterator.hasNext()){
+                  firstPolyline = mMap
+              }*/
+                    //firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).addAll(iterator.hasNext()));
+                    for (Location location : locationResult.getLocations()) {
+                        //Here's where the magic happens and we start tracking
+                        String textoLatLng = String.valueOf(location.getLatitude()) + String.valueOf(location.getLongitude());
+                        Log.d(TAG, "Location Results: " + textoLatLng);
+                        mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(),
+                                location.getLongitude()))).setTitle("Aqui estoy");
+                    }
+                }
+            };
+            mLocationCallback.onLocationResult((LocationResult) locationResult.getResult());
+            return;
+        }
+
+    }
+    private void stopLocationUpdates(){
+        mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+    }
 }
