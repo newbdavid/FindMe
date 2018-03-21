@@ -37,10 +37,13 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+
+import java.util.List;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
@@ -57,6 +60,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private LocationRequest mLocationRequest;
+
     private LocationCallback mLocationCallback;
     private boolean isTracking = false;
     private Polyline firstPolyline;
@@ -274,7 +278,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Add a marker in Sydney and move the camera
         LatLng sydney = new LatLng(-0.196, -78.511);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Quito"));
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(sydney, 10);
         mMap.animateCamera(cameraUpdate);
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
@@ -295,13 +299,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // ...
                 getDeviceLocation();
 
-                startLocationUpdates();
+                //startLocationUpdates();
                 Log.d(TAG, "Muestra posicion actual!");
                 if(isTracking == false){
                     startLocationUpdates();
                     fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),ic_stop_navigation));
                     isTracking = true;
                 }else if (isTracking != false) {
+                    stopLocationUpdates();
                     fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),R.drawable.ic_navigation_start));
                     isTracking = false;
                 }
@@ -341,7 +346,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).add(
+                    new LatLng(-0.1619649,-78.4955509),
+                    new LatLng(-0.1591132,-78.4967833)
+            ));
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
@@ -349,10 +357,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
-            Task locationResult = mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
             mLocationCallback = new LocationCallback() {
                 @Override
-                public void onLocationResult(final LocationResult locationResult) {
+                public void onLocationResult( LocationResult locationResult) {
 
                     if (locationResult == null) {
                         return;
@@ -362,22 +369,35 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
               while(iterator.hasNext()){
                   firstPolyline = mMap
               }*/
+
                     //firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).addAll(iterator.hasNext()));
                     for (Location location : locationResult.getLocations()) {
                         //Here's where the magic happens and we start tracking
                         String textoLatLng = String.valueOf(location.getLatitude()) + String.valueOf(location.getLongitude());
                         Log.d(TAG, "Location Results: " + textoLatLng);
+                        mLastKnownLocation = location;
                         mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(),
                                 location.getLongitude()))).setTitle("Aqui estoy");
+                        //firstPolyline.getPoints().add(new LatLng(location.getLatitude(),location.getLongitude()));
+                        List<LatLng> points = firstPolyline.getPoints();
+                        points.add(new LatLng(location.getLatitude(),location.getLongitude()));
+                        firstPolyline.setPoints(points);
                     }
                 }
             };
-            mLocationCallback.onLocationResult((LocationResult) locationResult.getResult());
-            return;
-        }
+            mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
+
+            //locationResult.addOnCompleteListener();
+            //mLocationCallback.onLocationResult((LocationResult) locationResult.getResult());
+
 
     }
+
+
+
     private void stopLocationUpdates(){
         mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
+
+
 }
