@@ -2,6 +2,7 @@ package ec.edu.epn.findme;
 
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -78,6 +79,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         setSupportActionBar(toolbar);
 
         fab = (FloatingActionButton) findViewById(R.id.fab);
+        //fab.getBackgroundTintList(ColorStateList.valueOf(R.color.colorGreenStartNavigation));
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -350,27 +352,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     new LatLng(-0.1619649,-78.4955509),
                     new LatLng(-0.1591132,-78.4967833)
             ));
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+
             mLocationCallback = new LocationCallback() {
                 @Override
                 public void onLocationResult( LocationResult locationResult) {
-
                     if (locationResult == null) {
                         return;
                     }
-              /*new LatLng(locationResult.getLocations().get(1).getLatitude(),locationResult.getLocations().get(1).getLongitude());
-              Iterator<Location> iterator = locationResult.getLocations().iterator();
-              while(iterator.hasNext()){
-                  firstPolyline = mMap
-              }*/
-
-                    //firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).addAll(iterator.hasNext()));
                     for (Location location : locationResult.getLocations()) {
                         //Here's where the magic happens and we start tracking
                         String textoLatLng = String.valueOf(location.getLatitude()) + String.valueOf(location.getLongitude());
@@ -387,12 +375,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             };
             mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
 
-            //locationResult.addOnCompleteListener();
-            //mLocationCallback.onLocationResult((LocationResult) locationResult.getResult());
-
 
     }
-
 
 
     private void stopLocationUpdates(){
