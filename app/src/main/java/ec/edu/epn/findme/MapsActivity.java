@@ -2,7 +2,6 @@ package ec.edu.epn.findme;
 
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -45,6 +44,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
 import java.util.List;
+import java.util.Vector;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
@@ -68,6 +68,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
 
     private Location mLastKnownLocation;
+
+    private List<Polyline> polylineVector;
+    /*
+    first [] declares the number of polyline, starting at 0
+    second [] declares the number of point, starting at 0. The highest point count of all polylines is
+                determined in the startLocationUpdates() callback
+    third [] will be 0 or 1 because 0 will be latitude and "1" will allocate longitude
+     */
+    private double[][][] polylineArray;
+    private int localPointCounter;
+    private int globalMaxPointCounter=0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,12 +109,52 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
+        polylineVector = new Vector<Polyline>(10) ;
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
 
+
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+
+        super.onSaveInstanceState(savedInstanceState);
+        getDeviceLocation();
+        savedInstanceState.putDouble("LastKnownLocationLatitude",mLastKnownLocation.getLatitude());
+        savedInstanceState.putDouble("LastKnownLocationLongitude",mLastKnownLocation.getLongitude());
+        //TODO get the Vector of polylines
+        //savedInstanceState.putDoubleArray("LastPolyline",firstPolyline.getPoints().);
+        int totalNumOfPolylines = polylineVector.size();
+        polylineArray= new double[totalNumOfPolylines][globalMaxPointCounter][2];
+        for (int i=0;i<totalNumOfPolylines;i++){
+            List <LatLng>polilyne = polylineVector.get(i).getPoints();
+            for (int j=0;j<globalMaxPointCounter;j++){
+                if(polilyne.get(j).equals(null)){
+                    j=globalMaxPointCounter;
+                }
+                polylineArray[i][j][0]=polilyne.get(j).latitude;
+                polylineArray[i][j][1]=polilyne.get(j).longitude;
+
+            }
+        }
+        //savedInstanceState.putDoubleArray("PolylineArray",polylineArray);
+
+    }
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState){
+        super.onRestoreInstanceState(savedInstanceState);
+        if(savedInstanceState.getDouble("LastKnownLocationLatitude")!= mDefaultLocation.latitude){
+            mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
+            mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
+            LatLng actualPosition = new LatLng(mLastKnownLocation.getLatitude(),
+                    mLastKnownLocation.getLongitude());
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
+            mMap.animateCamera(cameraUpdate);
+        }
     }
 
     private void getLocationPermission() {
@@ -276,6 +327,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d(TAG, "Entro por aqui!");
         getLocationPermission();
         updateLocationUI();
+        getDeviceLocation();
         //startTrackingPosition();
 
         // Add a marker in Sydney and move the camera
@@ -288,6 +340,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void startTrackingPosition() {
         createLocationRequest();
+
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(mLocationRequest);
@@ -317,7 +370,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         task.addOnFailureListener(this, new OnFailureListener() {
-            TurnOnGPSDialog turnOnGPSDialog = new TurnOnGPSDialog();
+
 
             @Override
             public void onFailure(@NonNull Exception e) {
@@ -348,28 +401,45 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void startLocationUpdates() {
-            firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).add(
-                    new LatLng(-0.1619649,-78.4955509),
-                    new LatLng(-0.1591132,-78.4967833)
-            ));
-
+            getDeviceLocation();
+            firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true));
+            localPointCounter = 0;
             mLocationCallback = new LocationCallback() {
                 @Override
                 public void onLocationResult( LocationResult locationResult) {
+                    final double MIN_DISTANCE_TO_ACCEPT_LATLNG = 15;
                     if (locationResult == null) {
                         return;
+                    }
+                    Log.d(TAG, "GetPoints at start: " + firstPolyline.getPoints().toString());
+                    if (firstPolyline.getPoints().isEmpty()) {
+                        Log.d(TAG, "Esta vacia la polyline+: " );
+                        List<LatLng> primerPunto = firstPolyline.getPoints();
+                        primerPunto.add(new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()));
+                        firstPolyline.setPoints(primerPunto);
+                        localPointCounter++;
                     }
                     for (Location location : locationResult.getLocations()) {
                         //Here's where the magic happens and we start tracking
                         String textoLatLng = String.valueOf(location.getLatitude()) + String.valueOf(location.getLongitude());
                         Log.d(TAG, "Location Results: " + textoLatLng);
-                        mLastKnownLocation = location;
+                        double distanceBetweenLast2Points=MIN_DISTANCE_TO_ACCEPT_LATLNG;
+                        if (mLastKnownLocation!=null){
+                            distanceBetweenLast2Points= calculateDistanceInMeters(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),location.getLatitude(),location.getLongitude());
+                            Log.d(TAG, "Location Results: " + textoLatLng+"Distance Between 2 lastPoints"+distanceBetweenLast2Points);
+                        }
+                        //Esto luego se podra comentar, es solo para ver cuantas actualizaciones se dieron
                         mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(),
                                 location.getLongitude()))).setTitle("Aqui estoy");
                         //firstPolyline.getPoints().add(new LatLng(location.getLatitude(),location.getLongitude()));
-                        List<LatLng> points = firstPolyline.getPoints();
-                        points.add(new LatLng(location.getLatitude(),location.getLongitude()));
-                        firstPolyline.setPoints(points);
+                        if (distanceBetweenLast2Points>=MIN_DISTANCE_TO_ACCEPT_LATLNG) {
+                            List<LatLng> points = firstPolyline.getPoints();
+
+                            points.add(new LatLng(location.getLatitude(), location.getLongitude()));
+                            firstPolyline.setPoints(points);
+                            mLastKnownLocation = location;
+                            localPointCounter++;
+                        }
                     }
                 }
             };
@@ -380,8 +450,28 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     private void stopLocationUpdates(){
+        polylineVector.add(firstPolyline);
+        if(localPointCounter>globalMaxPointCounter){
+            globalMaxPointCounter= localPointCounter;
+            Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
+        }
         mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
     }
+    //Method got from StackOverflow :)
+    public final static double AVERAGE_RADIUS_OF_EARTH_M = 6371000;
+    public int calculateDistanceInMeters(double userLat, double userLng,
+                                         double venueLat, double venueLng) {
 
+        double latDistance = Math.toRadians(userLat - venueLat);
+        double lngDistance = Math.toRadians(userLng - venueLng);
+
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(userLat)) * Math.cos(Math.toRadians(venueLat))
+                * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return (int) (Math.round(AVERAGE_RADIUS_OF_EARTH_M * c));
+    }
 
 }
