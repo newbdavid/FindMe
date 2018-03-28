@@ -42,9 +42,13 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.ServerValue;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
+
+import ec.edu.epn.findme.vo.RutaRecorrida;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
@@ -79,6 +83,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double[][][] polylineArray;
     private int localPointCounter;
     private int globalMaxPointCounter=0;
+
+
+    private RutaRecorrida[] rutasRecorridas = new RutaRecorrida[100];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -127,17 +134,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         savedInstanceState.putDouble("LastKnownLocationLatitude",mLastKnownLocation.getLatitude());
         savedInstanceState.putDouble("LastKnownLocationLongitude",mLastKnownLocation.getLongitude());
         //TODO get the Vector of polylines
-        //savedInstanceState.putDoubleArray("LastPolyline",firstPolyline.getPoints().);
+        //savedInstanceState.putDoubleArray("LastPolyline",firstPolyline.getPoints());
         int totalNumOfPolylines = polylineVector.size();
         polylineArray= new double[totalNumOfPolylines][globalMaxPointCounter][2];
         for (int i=0;i<totalNumOfPolylines;i++){
-            List <LatLng>polilyne = polylineVector.get(i).getPoints();
+            List <LatLng>polyline = polylineVector.get(i).getPoints();
             for (int j=0;j<globalMaxPointCounter;j++){
-                if(polilyne.get(j).equals(null)){
+                if(polyline.get(j)==null){
                     j=globalMaxPointCounter;
                 }
-                polylineArray[i][j][0]=polilyne.get(j).latitude;
-                polylineArray[i][j][1]=polilyne.get(j).longitude;
+                polylineArray[i][j][0]= polyline.get(j).latitude;
+                polylineArray[i][j][1]= polyline.get(j).longitude;
 
             }
         }
@@ -394,12 +401,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     protected void createLocationRequest() {
-        mLocationRequest = new LocationRequest();
+        mLocationRequest = LocationRequest.create();
         mLocationRequest.setInterval(NORMAL_LOCATION_INTERVAL);
         mLocationRequest.setFastestInterval(FASTEST_PERMITED_LOCATION_INTERVAL);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
+    @SuppressWarnings({"MissingPermission"})
     private void startLocationUpdates() {
             getDeviceLocation();
             firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true));
@@ -450,7 +458,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     private void stopLocationUpdates(){
+        HashMap<String,Object> lastTraveledTime= new HashMap<>();
+        lastTraveledTime.put("timestamp", ServerValue.TIMESTAMP);
         polylineVector.add(firstPolyline);
+        rutasRecorridas[polylineVector.size()-1]= new RutaRecorrida(firstPolyline,lastTraveledTime);
         if(localPointCounter>globalMaxPointCounter){
             globalMaxPointCounter= localPointCounter;
             Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
