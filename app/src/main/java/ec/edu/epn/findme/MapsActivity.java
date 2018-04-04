@@ -42,13 +42,18 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.database.ServerValue;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.GeoPoint;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 
-import ec.edu.epn.findme.vo.RutaRecorrida;
+import ec.edu.epn.findme.entity.RutaRecorrida;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
@@ -87,6 +92,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private RutaRecorrida[] rutasRecorridas = new RutaRecorrida[100];
 
+    private FirebaseFirestore db = FirebaseFirestore.getInstance();
+    DocumentReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios").document("ItsMeMario");
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -139,7 +146,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         polylineArray= new double[totalNumOfPolylines][globalMaxPointCounter][2];
         for (int i=0;i<totalNumOfPolylines;i++){
             List <LatLng>polyline = polylineVector.get(i).getPoints();
-            for (int j=0;j<globalMaxPointCounter;j++){
+            for (int j=0;j<polyline.size();j++){
                 if(polyline.get(j)==null){
                     j=globalMaxPointCounter;
                 }
@@ -458,16 +465,37 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     private void stopLocationUpdates(){
-        HashMap<String,Object> lastTraveledTime= new HashMap<>();
-        lastTraveledTime.put("timestamp", ServerValue.TIMESTAMP);
+        Map<String,Object> trackData= new HashMap<>();
+        trackData.put("lastTraveled", FieldValue.serverTimestamp());
+        //Timestamp lastTraveled = new Timestamp(ServerValue.TIMESTAMP,1);
         polylineVector.add(firstPolyline);
-        rutasRecorridas[polylineVector.size()-1]= new RutaRecorrida(firstPolyline,lastTraveledTime);
+        rutasRecorridas[polylineVector.size()-1]= new RutaRecorrida(firstPolyline,trackData);
         if(localPointCounter>globalMaxPointCounter){
             globalMaxPointCounter= localPointCounter;
             Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
         }
         mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+        SetPointsIntoFirebase(rutasRecorridas,polylineVector.size()-1,trackData);
     }
+
+    private void SetPointsIntoFirebase(RutaRecorrida[] rutasRecorridas, int i, Map<String, Object> trackData) {
+        Polyline polylineToAdd = rutasRecorridas[i].getPolyline();
+        List<LatLng> points = polylineToAdd.getPoints();
+        List<GeoPoint> geoPointsList = new ArrayList<GeoPoint>();
+        for(int pointCounter=0;pointCounter<points.size();pointCounter++){
+            geoPointsList.add(new GeoPoint(points.get(pointCounter).latitude,points.get(pointCounter).longitude)) ;
+        }
+        trackData.put("points",geoPointsList);
+        usuarioInvitado2Ref.collection("tracks").document("track"+(i+1)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(TAG, "Entro en la base de datos: ");
+
+            }
+        });
+    }
+
+
     //Method got from StackOverflow :)
     public final static double AVERAGE_RADIUS_OF_EARTH_M = 6371000;
     public int calculateDistanceInMeters(double userLat, double userLng,

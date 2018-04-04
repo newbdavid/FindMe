@@ -1,4 +1,4 @@
-package ec.edu.epn.findme.vo;
+package ec.edu.epn.findme.entity;
 
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -6,6 +6,7 @@ import android.os.Parcelable;
 import com.google.android.gms.maps.model.Polyline;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by David Moncayo on 27/03/2018.
@@ -13,13 +14,13 @@ import java.util.HashMap;
 
 public class RutaRecorrida implements Parcelable{
 
-    Polyline polyline;
+    private Polyline polyline;
 
 
 
-    HashMap<String,Object> timeStampLastTraveled;
+    private Map<String,Object> timeStampLastTraveled;
 
-    public RutaRecorrida(Polyline polyline,HashMap<String,Object> timeStampLastTraveled){
+    public RutaRecorrida(Polyline polyline,Map<String,Object> timeStampLastTraveled){
         this.polyline=polyline;
         this.timeStampLastTraveled=timeStampLastTraveled;
     }
@@ -52,7 +53,7 @@ public class RutaRecorrida implements Parcelable{
         this.timeStampLastTraveled = timeStampLastTraveled;
     }
 
-    public HashMap<String, Object> getTimeStampLastTraveled() {
+    public Map<String, Object> getTimeStampLastTraveled() {
         return timeStampLastTraveled;
     }
 
