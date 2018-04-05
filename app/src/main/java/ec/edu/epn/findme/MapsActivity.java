@@ -42,10 +42,13 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,6 +57,7 @@ import java.util.Map;
 import java.util.Vector;
 
 import ec.edu.epn.findme.entity.RutaRecorrida;
+import ec.edu.epn.findme.entity.TrackObject;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
@@ -91,9 +95,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     private RutaRecorrida[] rutasRecorridas = new RutaRecorrida[100];
-
+    private String username = "UsuarioInvitado2";
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
-    DocumentReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios").document("ItsMeMario");
+    DocumentReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios").document(username);
+    DocumentReference userLastLocations = db.collection("LocationData").document("Quito").collection("LastLocations").document(username);
+    CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -343,11 +350,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         updateLocationUI();
         getDeviceLocation();
         //startTrackingPosition();
-
+        getPointsAndDrawOtherUsersPoints();
         // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-0.196, -78.511);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Quito"));
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(sydney, 10);
+        LatLng homeLocation = new LatLng(-0.196, -78.511);
+        mMap.addMarker(new MarkerOptions().position(homeLocation).title("Marker in Quito"));
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(homeLocation, 10);
         mMap.animateCamera(cameraUpdate);
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
@@ -440,7 +447,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d(TAG, "Location Results: " + textoLatLng);
                         double distanceBetweenLast2Points=MIN_DISTANCE_TO_ACCEPT_LATLNG;
                         if (mLastKnownLocation!=null){
-                            distanceBetweenLast2Points= calculateDistanceInMeters(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),location.getLatitude(),location.getLongitude());
+                            distanceBetweenLast2Points = calculateDistanceInMeters(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),location.getLatitude(),location.getLongitude());
                             Log.d(TAG, "Location Results: " + textoLatLng+"Distance Between 2 lastPoints"+distanceBetweenLast2Points);
                         }
                         //Esto luego se podra comentar, es solo para ver cuantas actualizaciones se dieron
@@ -479,12 +486,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void SetPointsIntoFirebase(RutaRecorrida[] rutasRecorridas, int i, Map<String, Object> trackData) {
+        final Map<String,Object> lastSeenTrackData = new HashMap<>();
+        lastSeenTrackData.put("lastSeen",trackData.get("lastTraveled"));
+
         Polyline polylineToAdd = rutasRecorridas[i].getPolyline();
         List<LatLng> points = polylineToAdd.getPoints();
         List<GeoPoint> geoPointsList = new ArrayList<GeoPoint>();
         for(int pointCounter=0;pointCounter<points.size();pointCounter++){
             geoPointsList.add(new GeoPoint(points.get(pointCounter).latitude,points.get(pointCounter).longitude)) ;
         }
+        lastSeenTrackData.put("lastUbication",geoPointsList.get(points.size()-1));
         trackData.put("points",geoPointsList);
         usuarioInvitado2Ref.collection("tracks").document("track"+(i+1)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
@@ -493,8 +504,63 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
         });
+        userLastLocations.set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(TAG, "Entro en lastLocations: ");
+
+            }
+        });
     }
 
+    private void getPointsAndDrawOtherUsersPoints (){
+        usuarios.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()) {
+                    for (DocumentSnapshot document : task.getResult()) {
+                        Log.d(TAG, document.getId() + " => " + document.getData() );
+                        //getTrackInformation(document.getId());
+
+
+
+                    }
+                } else {
+                    Log.d(TAG, "Error getting documents: ", task.getException());
+                }
+            }
+        });
+    }
+
+    private void getTrackInformation(String id) {
+        usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if(task.isSuccessful()){
+                    for(DocumentSnapshot document : task.getResult()){
+                        Log.d(TAG, document.getId() + " => " + document.getData() +  document.getDate("lastTraveled"));
+                        drawLineToMap(document.toObject(TrackObject.class));
+                    }
+                }else {
+
+                }
+            }
+        });
+    }
+
+    private void drawLineToMap(TrackObject trackObject) {
+        FieldValue timeNow = FieldValue.serverTimestamp();
+
+        Polyline trackedPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).jointType(2));
+        List<LatLng> pointsToDraw= new ArrayList<>();
+        for(int i = 0;i<trackObject.getPoints().size();i++){
+            pointsToDraw.add(new LatLng(trackObject.getPoints().get(i).getLatitude(),trackObject.getPoints().get(i).getLongitude()));
+        }
+        trackedPolyline.setPoints(pointsToDraw);
+
+
+    }
 
     //Method got from StackOverflow :)
     public final static double AVERAGE_RADIUS_OF_EARTH_M = 6371000;
