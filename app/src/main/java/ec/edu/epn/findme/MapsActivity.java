@@ -43,7 +43,6 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -69,6 +68,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int NORMAL_LOCATION_INTERVAL = 15000;
     private static final int FASTEST_PERMITED_LOCATION_INTERVAL = 5000;
     private static final String TAG = MapsActivity.class.getSimpleName();
+
     private GoogleMap mMap;
     private boolean mLocationPermissionGranted = false;
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
@@ -92,19 +92,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double[][][] polylineArray;
     private int localPointCounter;
     private int globalMaxPointCounter=0;
-
+    private int currentNumberOfTracksOnFirebase;
 
     private RutaRecorrida[] rutasRecorridas = new RutaRecorrida[100];
-    private String username = "UsuarioInvitado2";
+    //UserName will go Here
+    private String username = "RogerThat";
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
-    DocumentReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios").document(username);
-    DocumentReference userLastLocations = db.collection("LocationData").document("Quito").collection("LastLocations").document(username);
+    CollectionReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios");
+    CollectionReference userLastLocations = db.collection("LocationData").document("Quito").collection("LastLocations");
     CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.content_main_activity_map);
+        currentNumberOfTracksOnFirebase = 0;
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -497,14 +499,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         lastSeenTrackData.put("lastUbication",geoPointsList.get(points.size()-1));
         trackData.put("points",geoPointsList);
-        usuarioInvitado2Ref.collection("tracks").document("track"+(i+1)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
+        usuarioInvitado2Ref.document(username).collection("tracks").document("track"+(i+1+currentNumberOfTracksOnFirebase)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.d(TAG, "Entro en la base de datos: ");
 
             }
         });
-        userLastLocations.set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
+        userLastLocations.document(username).set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.d(TAG, "Entro en lastLocations: ");
@@ -521,7 +523,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (task.isSuccessful()) {
                     for (DocumentSnapshot document : task.getResult()) {
                         Log.d(TAG, document.getId() + " => " + document.getData() );
-                        //getTrackInformation(document.getId());
+
+                        getTrackInformation(document.getId());
 
 
 
@@ -533,14 +536,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void getTrackInformation(String id) {
+    private void getTrackInformation(final String id) {
         usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if(task.isSuccessful()){
                     for(DocumentSnapshot document : task.getResult()){
-                        Log.d(TAG, document.getId() + " => " + document.getData() +  document.getDate("lastTraveled"));
+                        Log.d(TAG, id + " and "+username);
+                        if(id.equals(username) ){
+                            currentNumberOfTracksOnFirebase+=1;
+                            Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
+                        }
+                        Log.d(TAG, document.getId() + " => " +  document.getDate("lastTraveled"));
                         drawLineToMap(document.toObject(TrackObject.class));
+
                     }
                 }else {
 
