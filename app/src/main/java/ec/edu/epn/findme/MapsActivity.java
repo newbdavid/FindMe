@@ -46,7 +46,6 @@ import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
@@ -158,9 +157,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             for (int j=0;j<polyline.size();j++){
                 if(polyline.get(j)==null){
                     j=globalMaxPointCounter;
+                }else{
+                    polylineArray[i][j][0]= polyline.get(j).latitude;
+                    polylineArray[i][j][1]= polyline.get(j).longitude;
                 }
-                polylineArray[i][j][0]= polyline.get(j).latitude;
-                polylineArray[i][j][1]= polyline.get(j).longitude;
 
             }
         }
@@ -476,33 +476,35 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void stopLocationUpdates(){
         Map<String,Object> trackData= new HashMap<>();
         trackData.put("lastTraveled", FieldValue.serverTimestamp());
-        //Timestamp lastTraveled = new Timestamp(ServerValue.TIMESTAMP,1);
+
+
         polylineVector.add(firstPolyline);
+        TrackObject trackObjectToAdd = new TrackObject();
+        trackObjectToAdd.setLatLngPoints(firstPolyline.getPoints());
+        trackObjectToAdd.setLastTraveledFieldValue(FieldValue.serverTimestamp());
         rutasRecorridas[polylineVector.size()-1]= new RutaRecorrida(firstPolyline,trackData);
         if(localPointCounter>globalMaxPointCounter){
             globalMaxPointCounter= localPointCounter;
             Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
         }
         mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
-        SetPointsIntoFirebase(rutasRecorridas,polylineVector.size()-1,trackData);
+        //Log.d(TAG, "Antes de añadir: "+trackObjectToAdd.getPoints().get(0));
+        SetPointsIntoFirebase(trackObjectToAdd,polylineVector.size()-1);
     }
 
-    private void SetPointsIntoFirebase(RutaRecorrida[] rutasRecorridas, int i, Map<String, Object> trackData) {
+    private void SetPointsIntoFirebase(final TrackObject trackObjectToAdd, int i ) {
         final Map<String,Object> lastSeenTrackData = new HashMap<>();
-        lastSeenTrackData.put("lastSeen",trackData.get("lastTraveled"));
+        lastSeenTrackData.put("lastSeen",trackObjectToAdd.getLastTraveledFieldValue());
+        lastSeenTrackData.put("lastUbication",trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1));
 
-        Polyline polylineToAdd = rutasRecorridas[i].getPolyline();
-        List<LatLng> points = polylineToAdd.getPoints();
-        List<GeoPoint> geoPointsList = new ArrayList<GeoPoint>();
-        for(int pointCounter=0;pointCounter<points.size();pointCounter++){
-            geoPointsList.add(new GeoPoint(points.get(pointCounter).latitude,points.get(pointCounter).longitude)) ;
-        }
-        lastSeenTrackData.put("lastUbication",geoPointsList.get(points.size()-1));
-        trackData.put("points",geoPointsList);
+        Map<String,Object> trackData= new HashMap<>();
+        trackData.put("lastTraveled", trackObjectToAdd.getLastTraveledFieldValue());
+        trackData.put("points",trackObjectToAdd.getPoints());
         usuarioInvitado2Ref.document(username).collection("tracks").document("track"+(i+1+currentNumberOfTracksOnFirebase)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.d(TAG, "Entro en la base de datos: ");
+                //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
 
             }
         });

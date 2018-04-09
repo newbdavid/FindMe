@@ -15,6 +15,7 @@ import java.util.Map;
 public class RutaRecorrida implements Parcelable{
 
     private Polyline polyline;
+    private int id;
 
 
 
