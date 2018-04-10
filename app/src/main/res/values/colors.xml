@@ -7,4 +7,9 @@
     <color name="colorRegistryButtonsEnd">#ef6621</color>
     <color name="colorRegistryButtonsBeg">#f48f5d</color>
     <color name="colorGreenStartNavigation">#2ba522</color>
+    <color name="zeroToOneHour">#42f46e</color>
+    <color name="oneToThreeHours">#2ba522</color>
+    <color name="threeToTwelveHours">#3867e0</color>
+    <color name="twelveToTwoDays">#7918db</color>
+    <color name="twoToFiveDayS">#000000</color>
 </resources>

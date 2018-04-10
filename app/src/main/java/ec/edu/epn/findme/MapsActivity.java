@@ -19,6 +19,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -49,16 +50,21 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import ec.edu.epn.findme.AuxiliaryClasses.TimeToColor;
 import ec.edu.epn.findme.entity.RutaRecorrida;
 import ec.edu.epn.findme.entity.TrackObject;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, NavigationView.OnNavigationItemSelectedListener {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, NavigationView.OnNavigationItemSelectedListener, GoogleMap.OnPolylineClickListener {
 
     private FloatingActionButton fab;
     private static final int DEFAULT_ZOOM = 10;
@@ -79,7 +85,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
 
     private Location mLastKnownLocation;
-
+    private int[] coloursForPolyline = {R.color.zeroToOneHour,R.color.oneToThreeHours,R.color.threeToTwelveHours,R.color.twelveToTwoDays,R.color.twoToFiveDayS};
 
     /*
     first [] declares the number of polyline, starting at 0
@@ -87,7 +93,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 determined in the startLocationUpdates() callback
     third [] will be 0 or 1 because 0 will be latitude and "1" will allocate longitude
      */
-    private double[][][] polylineArray;
+    //private double[][][] polylineArray;
     private int localPointCounter;
     private int globalMaxPointCounter=0;
     private int currentNumberOfTracksOnFirebase;
@@ -351,6 +357,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         getDeviceLocation();
         //startTrackingPosition();
         getPointsAndDrawOtherUsersPoints();
+        mMap.setOnPolylineClickListener(this);
         // Add a marker in Sydney and move the camera
         LatLng homeLocation = new LatLng(-0.196, -78.511);
         mMap.addMarker(new MarkerOptions().position(homeLocation).title("Marker in Quito"));
@@ -591,9 +598,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void drawLineToMap(TrackObject trackObject) {
-        FieldValue timeNow = FieldValue.serverTimestamp();
+        //FieldValue timeNow = FieldValue.serverTimestamp();
 
-        Polyline trackedPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).jointType(2));
+        long diffInMilliseconds = System.currentTimeMillis() - trackObject.getLastTraveled().getTime();
+
+        String friendlyTimePastLastTraveled = getTimePastLastTraveled(diffInMilliseconds);
+        TimeToColor timeToColor = new TimeToColor();
+        int polylineColor = timeToColor.getTimeToColor(diffInMilliseconds);
+        Polyline trackedPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(this,polylineColor)));
+        trackedPolyline.setTag(friendlyTimePastLastTraveled);
+
         List<LatLng> pointsToDraw= new ArrayList<>();
         for(int i = 0;i<trackObject.getPoints().size();i++){
             pointsToDraw.add(new LatLng(trackObject.getPoints().get(i).getLatitude(),trackObject.getPoints().get(i).getLongitude()));
@@ -601,7 +615,45 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         trackedPolyline.setPoints(pointsToDraw);
 
 
+
+
     }
+
+    @Override
+    public void onPolylineClick(Polyline polyline) {
+        Toast.makeText(this,"Tiempo desde la ultima pasada "+ polyline.getTag().toString(),Toast.LENGTH_SHORT).show();
+    }
+
+
+    //Method got from stackoverflow
+    private String getTimePastLastTraveled(long diffInMilliseconds) {
+
+        //This units gets implemented into an ArrayList with an enumeration of all TimeUnits and gets reordered to DAYS, HOURS....
+        List<TimeUnit> units = new ArrayList<TimeUnit>(EnumSet.allOf(TimeUnit.class));
+        Collections.reverse(units);
+
+        Map<TimeUnit,Long> timePastLastTraveled = new LinkedHashMap<TimeUnit,Long>();
+        long milliesRest = diffInMilliseconds;
+        for ( TimeUnit unit : units ) {
+            long diff = unit.convert(milliesRest,TimeUnit.MILLISECONDS);
+            long diffInMilliesForUnit = unit.toMillis(diff);
+            milliesRest = milliesRest - diffInMilliesForUnit;
+            timePastLastTraveled.put(unit,diff);
+        }
+        StringBuilder friendlyTime = new StringBuilder();
+        for(Map.Entry<TimeUnit,Long> entry : timePastLastTraveled.entrySet()){
+            if(entry.getValue()>0){
+                friendlyTime.append(entry.getValue())
+                        .append(entry.getKey().toString().charAt(0))
+                        .append(" ");
+            }
+        }
+        friendlyTime.trimToSize();
+        return friendlyTime.toString();
+
+    }
+
+
 
     //Method got from StackOverflow :)
     public final static double AVERAGE_RADIUS_OF_EARTH_M = 6371000;
@@ -619,5 +671,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         return (int) (Math.round(AVERAGE_RADIUS_OF_EARTH_M * c));
     }
+
 
 }
