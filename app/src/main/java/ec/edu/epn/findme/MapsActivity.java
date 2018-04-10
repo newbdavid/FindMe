@@ -52,7 +52,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 
 import ec.edu.epn.findme.entity.RutaRecorrida;
 import ec.edu.epn.findme.entity.TrackObject;
@@ -81,7 +80,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private Location mLastKnownLocation;
 
-    private List<Polyline> polylineVector;
+
     /*
     first [] declares the number of polyline, starting at 0
     second [] declares the number of point, starting at 0. The highest point count of all polylines is
@@ -93,9 +92,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int globalMaxPointCounter=0;
     private int currentNumberOfTracksOnFirebase;
 
-    private RutaRecorrida[] rutasRecorridas = new RutaRecorrida[100];
+    private ArrayList<RutaRecorrida> rutasRecorridas;
     //UserName will go Here
-    private String username = "RogerThat";
+    private String username = "ItsMeLuigi";
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     CollectionReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios");
     CollectionReference userLastLocations = db.collection("LocationData").document("Quito").collection("LastLocations");
@@ -131,7 +130,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        polylineVector = new Vector<Polyline>(10) ;
+        rutasRecorridas = new ArrayList<RutaRecorrida>();
+
+        //polylineVector = new Vector<Polyline>(10) ;
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -150,26 +151,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         savedInstanceState.putDouble("LastKnownLocationLongitude",mLastKnownLocation.getLongitude());
         //TODO get the Vector of polylines
         //savedInstanceState.putDoubleArray("LastPolyline",firstPolyline.getPoints());
-        int totalNumOfPolylines = polylineVector.size();
-        polylineArray= new double[totalNumOfPolylines][globalMaxPointCounter][2];
-        for (int i=0;i<totalNumOfPolylines;i++){
-            List <LatLng>polyline = polylineVector.get(i).getPoints();
-            for (int j=0;j<polyline.size();j++){
-                if(polyline.get(j)==null){
-                    j=globalMaxPointCounter;
-                }else{
-                    polylineArray[i][j][0]= polyline.get(j).latitude;
-                    polylineArray[i][j][1]= polyline.get(j).longitude;
-                }
+//        if(firstPolyline.getPoints().size()>0){
+//            rutasRecorridas.add(new RutaRecorrida(firstPolyline,FieldValue.serverTimestamp()));
+//            Log.d(TAG, "Se añadio polyline: " + rutasRecorridas.get(0).getPolyline().getPoints().get(0));
+//            savedInstanceState.putParcelableArrayList("PolylineArrayList",rutasRecorridas );
+//        }
 
-            }
-        }
-        //savedInstanceState.putDoubleArray("PolylineArray",polylineArray);
 
     }
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState){
         super.onRestoreInstanceState(savedInstanceState);
+        Log.d(TAG, "Hola: " );
         if(savedInstanceState.getDouble("LastKnownLocationLatitude")!= mDefaultLocation.latitude){
             mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
             mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
@@ -178,6 +171,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
             mMap.animateCamera(cameraUpdate);
         }
+        rutasRecorridas = savedInstanceState.getParcelableArrayList("PolylineArrayList");
+        List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size()-1).getPolyline().getPoints();
+        Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
+        firstPolyline.setPoints(points);
     }
 
     private void getLocationPermission() {
@@ -358,6 +355,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.addMarker(new MarkerOptions().position(homeLocation).title("Marker in Quito"));
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(homeLocation, 10);
         mMap.animateCamera(cameraUpdate);
+        if(rutasRecorridas.size()>0){
+            List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size()-1).getPolyline().getPoints();
+            Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
+            firstPolyline.setPoints(points);
+        }
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
 
@@ -474,22 +476,25 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     private void stopLocationUpdates(){
-        Map<String,Object> trackData= new HashMap<>();
-        trackData.put("lastTraveled", FieldValue.serverTimestamp());
+        if (firstPolyline.getPoints().size()>1){
+            Map<String,Object> trackData= new HashMap<>();
+            trackData.put("lastTraveled", FieldValue.serverTimestamp());
+            //polylineVector.add(firstPolyline);
+            TrackObject trackObjectToAdd = new TrackObject();
+            trackObjectToAdd.setLatLngPoints(firstPolyline.getPoints());
+            trackObjectToAdd.setLastTraveledFieldValue(FieldValue.serverTimestamp());
+            rutasRecorridas.add(new RutaRecorrida(firstPolyline,FieldValue.serverTimestamp()));
 
-
-        polylineVector.add(firstPolyline);
-        TrackObject trackObjectToAdd = new TrackObject();
-        trackObjectToAdd.setLatLngPoints(firstPolyline.getPoints());
-        trackObjectToAdd.setLastTraveledFieldValue(FieldValue.serverTimestamp());
-        rutasRecorridas[polylineVector.size()-1]= new RutaRecorrida(firstPolyline,trackData);
-        if(localPointCounter>globalMaxPointCounter){
-            globalMaxPointCounter= localPointCounter;
-            Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
+            if(localPointCounter>globalMaxPointCounter){
+                globalMaxPointCounter= localPointCounter;
+                Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
+            }
+            SetPointsIntoFirebase(trackObjectToAdd,rutasRecorridas.size()-1);
         }
+
         mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
         //Log.d(TAG, "Antes de añadir: "+trackObjectToAdd.getPoints().get(0));
-        SetPointsIntoFirebase(trackObjectToAdd,polylineVector.size()-1);
+
     }
 
     private void SetPointsIntoFirebase(final TrackObject trackObjectToAdd, int i ) {
@@ -500,6 +505,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Map<String,Object> trackData= new HashMap<>();
         trackData.put("lastTraveled", trackObjectToAdd.getLastTraveledFieldValue());
         trackData.put("points",trackObjectToAdd.getPoints());
+
+
         usuarioInvitado2Ref.document(username).collection("tracks").document("track"+(i+1+currentNumberOfTracksOnFirebase)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
@@ -508,6 +515,27 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
         });
+        if(currentNumberOfTracksOnFirebase==0){
+            Map<String,Object> testData = new HashMap<>();
+            testData.put("TestField","Hola, porfavor arreglate");
+            usuarioInvitado2Ref.document(username).set(testData).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d(TAG, "Entro el dummy field: ");
+                    //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+
+                }
+            });
+            Map<String,Object> toEraseTestData = new HashMap<>();
+            toEraseTestData.put("TestField",FieldValue.delete());
+            usuarioInvitado2Ref.document(username).update(toEraseTestData).addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    Log.d(TAG, "Borro el dummy field: ");
+                }
+            });
+        }
+
         userLastLocations.document(username).set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {

@@ -4,9 +4,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import com.google.android.gms.maps.model.Polyline;
-
-import java.util.HashMap;
-import java.util.Map;
+import com.google.firebase.firestore.FieldValue;
 
 /**
  * Created by David Moncayo on 27/03/2018.
@@ -15,19 +13,29 @@ import java.util.Map;
 public class RutaRecorrida implements Parcelable{
 
     private Polyline polyline;
-    private int id;
 
 
 
-    private Map<String,Object> timeStampLastTraveled;
+    private FieldValue timestamp;
 
-    public RutaRecorrida(Polyline polyline,Map<String,Object> timeStampLastTraveled){
+
+    public RutaRecorrida(Polyline polyline,FieldValue timestamp){
         this.polyline=polyline;
-        this.timeStampLastTraveled=timeStampLastTraveled;
+        this.timestamp=timestamp;
     }
 
     protected RutaRecorrida(Parcel in) {
     }
+
+    public FieldValue getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(FieldValue timestamp) {
+        this.timestamp = timestamp;
+    }
+
+
 
     public static final Creator<RutaRecorrida> CREATOR = new Creator<RutaRecorrida>() {
         @Override
@@ -50,13 +58,7 @@ public class RutaRecorrida implements Parcelable{
         return polyline;
     }
 
-    public void setTimeStampLastTraveled(HashMap<String, Object> timeStampLastTraveled) {
-        this.timeStampLastTraveled = timeStampLastTraveled;
-    }
 
-    public Map<String, Object> getTimeStampLastTraveled() {
-        return timeStampLastTraveled;
-    }
 
     @Override
     public int describeContents() {
