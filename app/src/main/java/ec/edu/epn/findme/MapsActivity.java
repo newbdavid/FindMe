@@ -281,6 +281,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
+            stopLocationUpdates();
             super.onBackPressed();
         }
     }
@@ -476,7 +477,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     private void stopLocationUpdates(){
-        if (firstPolyline.getPoints().size()>1){
+        if (firstPolyline!=null){
             Map<String,Object> trackData= new HashMap<>();
             trackData.put("lastTraveled", FieldValue.serverTimestamp());
             //polylineVector.add(firstPolyline);
@@ -490,9 +491,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
             }
             SetPointsIntoFirebase(trackObjectToAdd,rutasRecorridas.size()-1);
+            mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
         }
 
-        mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+
         //Log.d(TAG, "Antes de añadir: "+trackObjectToAdd.getPoints().get(0));
 
     }
