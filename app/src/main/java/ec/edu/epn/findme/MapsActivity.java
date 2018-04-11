@@ -51,6 +51,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -59,6 +60,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import ec.edu.epn.findme.AuxiliaryClasses.TimeToColor;
+import ec.edu.epn.findme.entity.LastLocation;
 import ec.edu.epn.findme.entity.RutaRecorrida;
 import ec.edu.epn.findme.entity.TrackObject;
 
@@ -105,6 +107,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     CollectionReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios");
     CollectionReference userLastLocations = db.collection("LocationData").document("Quito").collection("LastLocations");
     CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
+    private long timeDiff = 432000000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -358,6 +361,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         //startTrackingPosition();
         getPointsAndDrawOtherUsersPoints();
         mMap.setOnPolylineClickListener(this);
+        getUsersLastLocationsAndAddMarkers();
         // Add a marker in Sydney and move the camera
         LatLng homeLocation = new LatLng(-0.196, -78.511);
         mMap.addMarker(new MarkerOptions().position(homeLocation).title("Marker in Quito"));
@@ -510,6 +514,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         final Map<String,Object> lastSeenTrackData = new HashMap<>();
         lastSeenTrackData.put("lastSeen",trackObjectToAdd.getLastTraveledFieldValue());
         lastSeenTrackData.put("lastUbication",trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1));
+        lastSeenTrackData.put("lastSeenMillis",trackObjectToAdd.getLastTraveled().getTime());
 
         Map<String,Object> trackData= new HashMap<>();
         trackData.put("lastTraveled", trackObjectToAdd.getLastTraveledFieldValue());
@@ -576,6 +581,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void getTrackInformation(final String id) {
+        Date timeNow = new Date(System.currentTimeMillis());
+        Date fromDate = new Date(timeNow.getTime()-timeDiff);
         usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
@@ -619,9 +626,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+    public void getUsersLastLocationsAndAddMarkers(){
+        long timeDiff = 432000000;//5 days
+        long longtimeToSearch = System.currentTimeMillis()-timeDiff;
+        //Date timeToSearch = new Date(System.currentTimeMillis()-timeDiff);
+        userLastLocations.whereGreaterThan("lastSeenMillis",longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()) {
+                    for (DocumentSnapshot document : task.getResult()) {
+                        Log.d(TAG, "LastLocations: "+document.getId() + " => " + document.getData());
+                        drawLastSeenUsersMarkers(document.getId(),document.toObject(LastLocation.class));
+                    }
+                } else {
+                    Log.d(TAG, "Error getting documents: ", task.getException());
+                }
+            }
+        });
+    }
+
+    private void drawLastSeenUsersMarkers(String id, LastLocation lastLocation) {
+        mMap.addMarker(new MarkerOptions().alpha(0.4f).position(lastLocation.getLastUbicationLatLng()).title(id));
+    }
+
     @Override
     public void onPolylineClick(Polyline polyline) {
-        Toast.makeText(this,"Tiempo desde la ultima pasada "+ polyline.getTag().toString(),Toast.LENGTH_SHORT).show();
+        Toast.makeText(this,"Tiempo desde la ultima pasada "+ polyline.getTag().toString(),Toast.LENGTH_LONG).show();
     }
 
 
