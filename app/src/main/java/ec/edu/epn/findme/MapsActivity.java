@@ -51,7 +51,6 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -495,6 +494,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             TrackObject trackObjectToAdd = new TrackObject();
             trackObjectToAdd.setLatLngPoints(firstPolyline.getPoints());
             trackObjectToAdd.setLastTraveledFieldValue(FieldValue.serverTimestamp());
+            trackObjectToAdd.setLastTraveledMillis(System.currentTimeMillis());
             rutasRecorridas.add(new RutaRecorrida(firstPolyline,FieldValue.serverTimestamp()));
 
             if(localPointCounter>globalMaxPointCounter){
@@ -514,12 +514,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         final Map<String,Object> lastSeenTrackData = new HashMap<>();
         lastSeenTrackData.put("lastSeen",trackObjectToAdd.getLastTraveledFieldValue());
         lastSeenTrackData.put("lastUbication",trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1));
-        lastSeenTrackData.put("lastSeenMillis",trackObjectToAdd.getLastTraveled().getTime());
+        lastSeenTrackData.put("lastSeenMillis",trackObjectToAdd.getLastTraveledMillis());
 
         Map<String,Object> trackData= new HashMap<>();
         trackData.put("lastTraveled", trackObjectToAdd.getLastTraveledFieldValue());
         trackData.put("points",trackObjectToAdd.getPoints());
-
+        trackData.put("lastTraveledMillis",trackObjectToAdd.getLastTraveledMillis());
 
         usuarioInvitado2Ref.document(username).collection("tracks").document("track"+(i+1+currentNumberOfTracksOnFirebase)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
@@ -581,9 +581,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void getTrackInformation(final String id) {
-        Date timeNow = new Date(System.currentTimeMillis());
-        Date fromDate = new Date(timeNow.getTime()-timeDiff);
-        usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+        //long timeDiff = 432000000;//5 days
+        long longtimeToSearch = System.currentTimeMillis()-timeDiff;
+        //usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+        usuarios.document(id).collection("tracks").whereGreaterThanOrEqualTo("lastTraveledMillis",longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if(task.isSuccessful()){
@@ -594,6 +595,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
                         }
                         Log.d(TAG, document.getId() + " => " +  document.getDate("lastTraveled"));
+
+/*                        if(id.equals("usuarioInvitado")){
+                            long timeInMillis = document.getDate("lastTraveled").getTime();
+                            Map<String,Object> provisionalAddingTimeMillis = new HashMap<>();
+                            provisionalAddingTimeMillis.put("lastTraveledMillis",timeInMillis);
+
+
+                            usuarios.document(id).collection("tracks").document(document.getId()).set(provisionalAddingTimeMillis, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    Log.d(TAG, "Agrego el tiempo en millis: ");
+                                    //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+
+                                }
+                            });
+                        }*/
+
                         drawLineToMap(document.toObject(TrackObject.class));
 
                     }
@@ -654,6 +672,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Toast.makeText(this,"Tiempo desde la ultima pasada "+ polyline.getTag().toString(),Toast.LENGTH_LONG).show();
     }
 
+    public void putLastTraveledMillisIntoOldData(){
+
+    }
 
     //Method got from stackoverflow
     private String getTimePastLastTraveled(long diffInMilliseconds) {

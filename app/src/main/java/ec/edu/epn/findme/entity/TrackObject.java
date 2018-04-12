@@ -15,11 +15,16 @@ import java.util.List;
 public class TrackObject {
     private Date lastTraveled;
     private List<GeoPoint> points;
-
-
-
+    private long lastTraveledMillis;
     private FieldValue lastTraveledFieldValue;
 
+    public long getLastTraveledMillis() {
+        return lastTraveledMillis;
+    }
+
+    public void setLastTraveledMillis(long lastTraveledMillis) {
+        this.lastTraveledMillis = lastTraveledMillis;
+    }
     public Date getLastTraveled() {
         return lastTraveled;
     }
