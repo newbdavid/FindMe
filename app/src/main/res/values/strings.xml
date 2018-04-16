@@ -28,6 +28,9 @@
         completions."
     </string>
     <string name="title_activity_registro_forum">Sign in</string>
+    <string name="active_searches_title">Active Searches</string>
+    <string name="active_searches_button_enterToMap">Enter Map</string>
+
 
     <!-- Strings related to login -->
     <string name="prompt_email">Email</string>

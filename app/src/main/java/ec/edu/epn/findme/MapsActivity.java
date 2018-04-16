@@ -86,7 +86,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
 
     private Location mLastKnownLocation;
-    private int[] coloursForPolyline = {R.color.zeroToOneHour,R.color.oneToThreeHours,R.color.threeToTwelveHours,R.color.twelveToTwoDays,R.color.twoToFiveDayS};
+    //private int[] coloursForPolyline = {R.color.zeroToOneHour,R.color.oneToThreeHours,R.color.threeToTwelveHours,R.color.twelveToTwoDays,R.color.twoToFiveDayS};
 
     /*
     first [] declares the number of polyline, starting at 0
@@ -106,7 +106,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     CollectionReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios");
     CollectionReference userLastLocations = db.collection("LocationData").document("Quito").collection("LastLocations");
     CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
-    private long timeDiff = 432000000;
+    private long timeDiff = 432000000;//5 days
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -639,9 +639,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         trackedPolyline.setPoints(pointsToDraw);
 
-
-
-
     }
 
     public void getUsersLastLocationsAndAddMarkers(){
@@ -703,8 +700,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return friendlyTime.toString();
 
     }
-
-
 
     //Method got from StackOverflow :)
     public final static double AVERAGE_RADIUS_OF_EARTH_M = 6371000;
