@@ -10,9 +10,29 @@ public class ActiveSearch {
 
     String name;
     String gender;
-    GeoPoint LastSeen;
-    int age;
+    GeoPoint ultimoAvistamiento;
+    long age;
     String description;
+    Boolean active;
+    String id;
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+
 
     public String getName() {
         return name;
@@ -30,19 +50,19 @@ public class ActiveSearch {
         this.gender = gender;
     }
 
-    public GeoPoint getLastSeen() {
-        return LastSeen;
+    public GeoPoint getUltimoAvistamiento() {
+        return ultimoAvistamiento;
     }
 
-    public void setLastSeen(GeoPoint lastSeen) {
-        LastSeen = lastSeen;
+    public void setUltimoAvistamiento(GeoPoint ultimoAvistamiento) {
+        this.ultimoAvistamiento = ultimoAvistamiento;
     }
 
-    public int getAge() {
+    public long getAge() {
         return age;
     }
 
-    public void setAge(int age) {
+    public void setAge(long age) {
         this.age = age;
     }
 
