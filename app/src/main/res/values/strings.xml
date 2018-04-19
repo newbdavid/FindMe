@@ -12,8 +12,9 @@
     <string name="title_activity_login">Sign in</string>
 
     <!-- Strings related to login and registry -->
-    <string name="prompt_CI">Cédula de Identidad</string>
-    <string name="prompt_password">Password (optional)</string>
+    <string name="prompt_email1">Email del buscador</string>
+    <string name="prompt_ci">Cédula de Identidad</string>
+    <string name="prompt_password">Password </string>
     <string name="prompt_names">Nombres</string>
     <string name="prompt_last_names">Apellidos</string>
     <string name="prompt_DINASED_number">Número único de DINASED</string>

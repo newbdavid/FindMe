@@ -1,5 +1,6 @@
 package ec.edu.epn.findme;
 
+import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -19,6 +20,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.api.ResolvableApiException;
@@ -43,11 +45,13 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.SetOptions;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,12 +60,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import ec.edu.epn.findme.AuxiliaryClasses.TimeToColor;
 import ec.edu.epn.findme.entity.LastLocation;
 import ec.edu.epn.findme.entity.RutaRecorrida;
 import ec.edu.epn.findme.entity.TrackObject;
+import ec.edu.epn.findme.entity.Usuario;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
@@ -73,7 +79,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int NORMAL_LOCATION_INTERVAL = 15000;
     private static final int FASTEST_PERMITED_LOCATION_INTERVAL = 5000;
     private static final String TAG = MapsActivity.class.getSimpleName();
-
+    private UUID ooooowww;
     private GoogleMap mMap;
     private boolean mLocationPermissionGranted = false;
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
@@ -100,13 +106,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int currentNumberOfTracksOnFirebase;
 
     private ArrayList<RutaRecorrida> rutasRecorridas;
+    private ArrayList<String> idsActiveSearches;
     //UserName will go Here
-    private String username = "ItsMeLuigi";
+    private String username;
+    private Usuario usuario;
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     CollectionReference usuarioInvitado2Ref = db.collection("LocationData").document("Quito").collection("usuarios");
     CollectionReference userLastLocations = db.collection("LocationData").document("Quito").collection("LastLocations");
     CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
+    CollectionReference userPersonalData = db.collection("UserData").document("Quito").collection("usuarios");
     private long timeDiff = 432000000;//5 days
+
+    TextView searcherNameView;
+    TextView searcherTypeView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,6 +126,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.content_main_activity_map);
         currentNumberOfTracksOnFirebase = 0;
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -148,6 +161,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
+
     }
 
     @Override
@@ -170,7 +184,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState){
         super.onRestoreInstanceState(savedInstanceState);
-        Log.d(TAG, "Hola: " );
+
         if(savedInstanceState.getDouble("LastKnownLocationLatitude")!= mDefaultLocation.latitude){
             mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
             mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
@@ -333,7 +347,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else if (id == R.id.nav_share) {
 
         } else if (id == R.id.nav_send) {
-
+            FirebaseAuth.getInstance().signOut();
+            Intent i = new Intent(MapsActivity.this,RegistroActivity.class);
+            startActivity(i);
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout_main);
@@ -352,12 +368,26 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
      */
     @Override
     public void onMapReady(GoogleMap googleMap) {
+
         mMap = googleMap;
         Log.d(TAG, "Entro por aqui!");
+        Intent intent =  getIntent();
+        if(intent.hasExtra("selectedActiveSearchIds")){
+        idsActiveSearches = intent.getExtras().getStringArrayList("selectedActiveSearchIds");
+        Log.d(TAG, "ActiveSearches: "+idsActiveSearches  );
+        }
+        if(intent.hasExtra("Uid")){
+            //idsActiveSearches = intent.getExtras().getStringArrayList("selectedActiveSearchIds");
+            Log.d(TAG, "Uid: "+intent.getExtras().getString("Uid")  );
+            username = intent.getExtras().getString("Uid");
+        }
+        searcherNameView = (TextView) findViewById(R.id.nav_header_nombres_registro);
+        searcherTypeView = (TextView) findViewById(R.id.nav_header_tipo_usuario);
+        setNameAndUserType();
         getLocationPermission();
         updateLocationUI();
         getDeviceLocation();
-        //startTrackingPosition();
+        setActiveSearchesToUserOnFirebase();
         getPointsAndDrawOtherUsersPoints();
         mMap.setOnPolylineClickListener(this);
         getUsersLastLocationsAndAddMarkers();
@@ -373,6 +403,35 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
+
+    private void setNameAndUserType() {
+
+
+
+        userPersonalData.document(username).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if(task.isSuccessful()){
+                    DocumentSnapshot document = task.getResult();
+                    Log.d(TAG, "UserData: "+document.getData());
+                    usuario = document.toObject(Usuario.class);
+                    Log.d(TAG, "UserData: "+usuario.getNombres());
+                    searcherNameView.setText(usuario.getNombres()+" "+usuario.getApellidos());
+                    if(usuario.isUsuarioDinased()){
+                        searcherTypeView.setText("DINASED");
+                    } else{
+                        searcherTypeView.setText("Buscador");
+                    }
+
+                }
+
+
+
+
+            }
+        });
+    }
+
 
     private void startTrackingPosition() {
         createLocationRequest();
@@ -486,6 +545,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
+
     private void stopLocationUpdates(){
         if (firstPolyline!=null){
             Map<String,Object> trackData= new HashMap<>();
@@ -507,6 +567,39 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         //Log.d(TAG, "Antes de añadir: "+trackObjectToAdd.getPoints().get(0));
+
+    }
+
+    private void setActiveSearchesToUserOnFirebase() {
+        usuarioInvitado2Ref.document(username).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if(task.isSuccessful()){
+                    DocumentSnapshot document = task.getResult();
+                    ArrayList<String> idSearchesFromFirebase = (ArrayList)document.get("activeSearches");
+                    Log.d(TAG, "idSearchesFromFirebase: "+idSearchesFromFirebase);
+                    for(String idSearch : idSearchesFromFirebase){
+                        if(!idsActiveSearches.contains(idSearch)){
+                            idsActiveSearches.add(idSearch);
+                        }
+                    }
+                    Map<String,Object> activeSearches = new HashMap<>();
+                    activeSearches.put("activeSearches",idsActiveSearches);
+                    usuarioInvitado2Ref.document(username).set(activeSearches, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            Log.d(TAG, "Entro en los ActiveSearchesIds: ");
+                            //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+
+                        }
+                    });
+
+                }else{
+
+                }
+            }
+        });
+
 
     }
 
@@ -560,24 +653,40 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void getPointsAndDrawOtherUsersPoints (){
-        usuarios.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
 
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful()) {
-                    for (DocumentSnapshot document : task.getResult()) {
-                        Log.d(TAG, document.getId() + " => " + document.getData() );
+//        for(String idToSearch : idsActiveSearches ){
+            usuarios.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
 
-                        getTrackInformation(document.getId());
+                @Override
+                public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                    if (task.isSuccessful()) {
+                        for (DocumentSnapshot document : task.getResult()) {
+                            Log.d(TAG, document.getId() + " => " + document.getData() );
+                            ArrayList<String> searchIdsFromForeignUser = (ArrayList<String>)document.get("activeSearches");
+                            Log.d(TAG, "Contenido de este ID: "+searchIdsFromForeignUser);
+                            for(int i =0;i<searchIdsFromForeignUser.size();i++){
+                                Log.d(TAG, "idActiveSearches: "+idsActiveSearches+"ForeignUserId"+searchIdsFromForeignUser);
+//                                if(Arrays.asList(idsActiveSearches).contains(searchIdsFromForeignUser.get(i).toString())){
+                                if(idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())){
+
+                                    Log.d(TAG, "Entro para dibujar");
+                                    i=searchIdsFromForeignUser.size();
+                                    getTrackInformation(document.getId());
+                                }
+
+                            }
 
 
 
+
+                        }
+                    } else {
+                        Log.d(TAG, "Error getting documents: ", task.getException());
                     }
-                } else {
-                    Log.d(TAG, "Error getting documents: ", task.getException());
                 }
-            }
-        });
+            });
+//        }
+
     }
 
     private void getTrackInformation(final String id) {

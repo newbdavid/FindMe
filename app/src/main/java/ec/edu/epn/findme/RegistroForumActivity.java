@@ -3,22 +3,22 @@ package ec.edu.epn.findme;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
-import android.content.pm.PackageManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
-
 import android.content.CursorLoader;
+import android.content.Intent;
 import android.content.Loader;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
-
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
+import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -27,10 +27,26 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import ec.edu.epn.findme.entity.LoginObject;
+import ec.edu.epn.findme.entity.Usuario;
 
 import static android.Manifest.permission.READ_CONTACTS;
 
@@ -51,24 +67,57 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
     private static final String[] DUMMY_CREDENTIALS = new String[]{
             "foo@example.com:hello", "bar@example.com:world"
     };
+
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
     private UserLoginTask mAuthTask = null;
-
+    private FirebaseAuth mAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
+    private FirebaseUser newFirebaseUser;
+    //Firestore References
+    private FirebaseFirestore db = FirebaseFirestore.getInstance();
+    CollectionReference newUserReference = db.collection("UserData").document("Quito").collection("usuarios");
     // UI references.
-    private AutoCompleteTextView cIView;
+    private AutoCompleteTextView emailView;
     private EditText mPasswordView;
+    private EditText mRepeatPasswordView;
+    private AutoCompleteTextView mCedulaIdentidadView;
+    private AutoCompleteTextView mNombresView;
+    private AutoCompleteTextView mApellidosView;
+    private Spinner tipoUsuarioSpinner;
+    private AutoCompleteTextView mNumeroUnicoDINASED;
     private View mProgressView;
     private View mLoginFormView;
+    private Usuario user;
+    private LoginObject loginObject;
+    private static final String TAG = RegistroForumActivity.class.getSimpleName();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registro_forum);
         setupActionBar();
+        mAuth = FirebaseAuth.getInstance();
+
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    // User is signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_in:" + user.getUid());
+                } else {
+                    // User is signed out
+                    Log.d(TAG, "onAuthStateChanged:signed_out");
+                }
+                // ...
+            }
+        };
+
         // Set up the login form.
-        cIView = (AutoCompleteTextView) findViewById(R.id.ci_register_ac_text_view);
+        emailView = (AutoCompleteTextView) findViewById(R.id.email_register_ac_text_view);
         populateAutoComplete();
 
         mPasswordView = (EditText) findViewById(R.id.password);
@@ -76,17 +125,34 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                    attemptLogin();
+                    //attemptLogin();
                     return true;
                 }
                 return false;
             }
         });
+        mRepeatPasswordView = (EditText) findViewById(R.id.repeat_password);
+        mCedulaIdentidadView = (AutoCompleteTextView) findViewById(R.id.ci_register_ac_text_view);
+        mNombresView = (AutoCompleteTextView) findViewById(R.id.nombres_registro) ;
+        mApellidosView = (AutoCompleteTextView) findViewById(R.id.apellidos_registro);
+        tipoUsuarioSpinner = (Spinner) findViewById(R.id.tipo_usuario);
+        mNumeroUnicoDINASED = (AutoCompleteTextView) findViewById(R.id.num_unico_dinased_registro);
 
+        List<String> userTypeArray = new ArrayList<>();
+        userTypeArray.add("Buscador");
+        userTypeArray.add("DINASED");
+
+        //declare an adapter with a simple format and source which is userTypeArray above
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                this,android.R.layout.simple_spinner_item,userTypeArray
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        tipoUsuarioSpinner.setAdapter(adapter);
         Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 attemptLogin();
             }
         });
@@ -111,7 +177,7 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
             return true;
         }
         if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
-            Snackbar.make(cIView, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
+            Snackbar.make(emailView, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
                     .setAction(android.R.string.ok, new View.OnClickListener() {
                         @Override
                         @TargetApi(Build.VERSION_CODES.M)
@@ -160,31 +226,73 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
         }
 
         // Reset errors.
-        cIView.setError(null);
+        emailView.setError(null);
         mPasswordView.setError(null);
-
+        mRepeatPasswordView.setError(null);
+        mCedulaIdentidadView.setError(null);
+        mNombresView.setError(null);
+        mApellidosView.setError(null);
+        mNumeroUnicoDINASED.setError(null);
         // Store values at the time of the login attempt.
-        String email = cIView.getText().toString();
-        String password = mPasswordView.getText().toString();
+        loginObject = new LoginObject(emailView.getText().toString(),mPasswordView.getText().toString(), mRepeatPasswordView.getText().toString());
+
+        boolean usuarioDinased;
+        if(tipoUsuarioSpinner.getSelectedItem().toString().equals("DINASED")){
+            usuarioDinased = true;
+        }else{
+            usuarioDinased = false;
+        }
+        user = new Usuario(mCedulaIdentidadView.getText().toString(),mNombresView.getText().toString(),
+                mApellidosView.getText().toString(),usuarioDinased,mNumeroUnicoDINASED.getText().toString());
 
         boolean cancel = false;
         View focusView = null;
 
         // Check for a valid password, if the user entered one.
-        if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
+        if (!TextUtils.isEmpty(loginObject.getPassword()) && !isPasswordValid(loginObject.getPassword())) {
             mPasswordView.setError(getString(R.string.error_invalid_password));
             focusView = mPasswordView;
             cancel = true;
         }
-
-        // Check for a valid email address.
-        if (TextUtils.isEmpty(email)) {
-            cIView.setError(getString(R.string.error_field_required));
-            focusView = cIView;
+        if(TextUtils.isEmpty(user.getCedula())||!cedulaIsValid(user.getCedula())){
+            mCedulaIdentidadView.setError("Enter a valid cedula");
+            focusView = mCedulaIdentidadView;
             cancel = true;
-        } else if (!isEmailValid(email)) {
-            cIView.setError(getString(R.string.error_invalid_email));
-            focusView = cIView;
+        }
+        if(TextUtils.isEmpty(user.getNombres())){
+            mNombresView.setError("Provide your Names");
+            focusView = mNombresView;
+            cancel = true;
+        }
+        if(TextUtils.isEmpty(user.getApellidos())){
+            mApellidosView.setError("Provide your LastName");
+            focusView = mApellidosView;
+            cancel = true;
+        }
+        if(user.isUsuarioDinased()&&TextUtils.isEmpty(user.getNumeroUnicoDinased())){
+            mNumeroUnicoDINASED.setError("Si es usuario DINASED provea un número");
+            focusView = mNumeroUnicoDINASED;
+            cancel = true;
+        }
+        //Check if both passwords are identical
+        if (!passwordsAreEqual(loginObject.getPassword(),loginObject.getRepeatPassword())){
+            mPasswordView.setError("Passwords must be equal");
+            focusView = mPasswordView;
+            cancel = true;
+        }
+        if(TextUtils.isEmpty(loginObject.getPassword())){
+            mPasswordView.setError("Password must not be empty");
+            focusView = mPasswordView;
+            cancel = true;
+        }
+        // Check for a valid email address.
+        if (TextUtils.isEmpty(loginObject.getEmail())) {
+            emailView.setError(getString(R.string.error_field_required));
+            focusView = emailView;
+            cancel = true;
+        } else if (!isEmailValid(loginObject.getEmail())) {
+            emailView.setError(getString(R.string.error_invalid_email));
+            focusView = emailView;
             cancel = true;
         }
 
@@ -195,9 +303,105 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
         } else {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
-            showProgress(true);
-            mAuthTask = new UserLoginTask(email, password);
-            mAuthTask.execute((Void) null);
+           // showProgress(true);
+            Toast.makeText(this,"Todo en orden",Toast.LENGTH_LONG).show();
+            mAuth.createUserWithEmailAndPassword(loginObject.getEmail(), loginObject.getPassword())
+                    .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            Log.d(TAG, "createUserWithEmail:onComplete:" + task.isSuccessful());
+                            newFirebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+                            setRestOfDataToFirebase();
+
+                            // If sign in fails, display a message to the user. If sign in succeeds
+                            // the auth state listener will be notified and logic to handle the
+                            // signed in user can be handled in the listener.
+                            if (!task.isSuccessful()) {
+                                Toast.makeText(RegistroForumActivity.this, "Ingreso Fa",
+                                        Toast.LENGTH_SHORT).show();
+                            }
+
+                            // ...
+                        }
+                    });
+            //Log.d(TAG, "All is correct" );
+
+//            mAuthTask = new UserLoginTask(email, password);
+//            mAuthTask.execute((Void) null);
+        }
+    }
+
+    private void setRestOfDataToFirebase() {
+
+        Map<String,Object> personalData = new HashMap<>();
+        personalData.put("cedula",user.getCedula());
+        personalData.put("nombres", user.getNombres());
+        personalData.put("apellidos", user.getApellidos());
+        personalData.put("usuarioDinased", user.isUsuarioDinased());
+        personalData.put ("numeroUnicoDinased",user.getNumeroUnicoDinased());
+        newUserReference.document(newFirebaseUser.getUid()).set(personalData).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(TAG, "Entro en la base de datos las cosas personales: ");
+                //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+                Bundle bundle = new Bundle();
+                bundle.putString("Uid",newFirebaseUser.getUid());
+                Intent i = new Intent(RegistroForumActivity.this,ActiveSearches.class);
+                i.putExtras(bundle);
+                startActivity(i);
+
+            }
+        });
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mAuth.addAuthStateListener(mAuthListener);
+    }
+
+    private boolean passwordsAreEqual(String password, String repeatPassword) {
+        if(password.equals(repeatPassword)){
+            return true;
+        }
+        return false;
+    }
+
+    private boolean cedulaIsValid(String cedula) {
+        int suma=0;
+        if(cedula.length()<=9||cedula.length()>10){
+            //System.out.println("Ingrese su cedula de 10 digitos");
+            return false;
+        }else {
+            int a[] = new int[cedula.length() / 2];
+            int b[] = new int[(cedula.length() / 2)];
+            int c = 0;
+            int d = 1;
+            for (int i = 0; i < cedula.length() / 2; i++) {
+                a[i] = Integer.parseInt(String.valueOf(cedula.charAt(c)));
+                c = c + 2;
+                if (i < (cedula.length() / 2) - 1) {
+                    b[i] = Integer.parseInt(String.valueOf(cedula.charAt(d)));
+                    d = d + 2;
+                }
+            }
+
+            for (int i = 0; i < a.length; i++) {
+                a[i] = a[i] * 2;
+                if (a[i] > 9) {
+                    a[i] = a[i] - 9;
+                }
+                suma = suma + a[i] + b[i];
+            }
+            int aux = suma / 10;
+            int dec = (aux + 1) * 10;
+            if ((dec - suma) == Integer.parseInt(String.valueOf(cedula.charAt(cedula.length() - 1))))
+                return true;
+            else if (suma % 10 == 0 && cedula.charAt(cedula.length() - 1) == '0') {
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
@@ -287,7 +491,7 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
                 new ArrayAdapter<>(RegistroForumActivity.this,
                         android.R.layout.simple_dropdown_item_1line, emailAddressCollection);
 
-        cIView.setAdapter(adapter);
+        emailView.setAdapter(adapter);
     }
 
 

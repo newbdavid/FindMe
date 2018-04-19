@@ -40,6 +40,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/active_searches_button_enterToMap"
                 android:layout_marginTop="16dp"
+                android:id="@+id/btnGoWithSelectedIds"
                 android:onClick="entrarConSearchId"
                 android:textStyle="bold"/>
 

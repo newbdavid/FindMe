@@ -8,13 +8,25 @@ import com.google.firebase.firestore.GeoPoint;
 
 public class ActiveSearch {
 
-    String name;
-    String gender;
-    GeoPoint ultimoAvistamiento;
-    long age;
-    String description;
-    Boolean active;
-    String id;
+    private String name;
+    private String gender;
+    private GeoPoint ultimoAvistamiento;
+    private long age;
+    private String description;
+    private boolean active;
+    private String id;
+    private transient boolean listSelected;
+
+    public boolean isListSelected() {
+        return listSelected;
+    }
+
+    public void setListSelected(boolean listSelected) {
+        this.listSelected = listSelected;
+    }
+
+
+
     public String getId() {
         return id;
     }
@@ -24,11 +36,11 @@ public class ActiveSearch {
     }
 
 
-    public Boolean getActive() {
+    public boolean isActive() {
         return active;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(boolean active) {
         this.active = active;
     }
 
