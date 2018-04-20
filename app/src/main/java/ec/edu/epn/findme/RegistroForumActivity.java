@@ -78,6 +78,7 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
     //Firestore References
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     CollectionReference newUserReference = db.collection("UserData").document("Quito").collection("usuarios");
+    CollectionReference newUserAlerts = db.collection("LocationData").document("Quito").collection("alerts");
     // UI references.
     private AutoCompleteTextView emailView;
     private EditText mPasswordView;
@@ -339,6 +340,16 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
         personalData.put("apellidos", user.getApellidos());
         personalData.put("usuarioDinased", user.isUsuarioDinased());
         personalData.put ("numeroUnicoDinased",user.getNumeroUnicoDinased());
+
+        final Map<String,Object> alerts = new HashMap<>();
+        alerts.put("numberOfAlerts",0);
+        newUserAlerts.document(newFirebaseUser.getUid()).set(alerts).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(TAG, "Entro en la base de datos con numberOfAlerts: "+alerts.get("numberOfAlerts"));
+            }
+        });
+
         newUserReference.document(newFirebaseUser.getUid()).set(personalData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
