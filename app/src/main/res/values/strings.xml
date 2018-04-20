@@ -33,6 +33,11 @@
     <string name="active_searches_button_enterToMap">Enter Map</string>
     <string name="latitude">latitude</string>
     <string name="longitude">longitude</string>
+    <string name="my_alerts_title">My Alerts</string>
+    <string name="all_aproved_alerts">Aproved Alerts</string>
+    <string name="all_alerts">All Alerts</string>
+    <string name="add_new_alert">Add new Alert</string>
+    <string name="approve_alert">Approve Alert</string>
 
     <!--Strings Related to Active Searches-->
     <string name="age">Age: </string>
