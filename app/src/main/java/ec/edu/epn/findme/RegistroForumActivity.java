@@ -78,7 +78,7 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
     //Firestore References
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     CollectionReference newUserReference = db.collection("UserData").document("Quito").collection("usuarios");
-    CollectionReference newUserAlerts = db.collection("LocationData").document("Quito").collection("alerts");
+    CollectionReference newUserAlerts = db.collection("LocationData").document("Quito").collection("usuarios");
     // UI references.
     private AutoCompleteTextView emailView;
     private EditText mPasswordView;
