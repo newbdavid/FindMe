@@ -53,7 +53,7 @@
                 <Button
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/add_new_alert"
+                    android:text="@string/approve_alert"
                     android:layout_marginTop="16dp"
                     android:id="@+id/approve_alert"
                     android:onClick="aprobarNuevaAlerta"

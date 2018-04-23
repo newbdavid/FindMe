@@ -96,13 +96,13 @@ public class MainActivityMap extends AppCompatActivity
             // Handle the camera action
         } else if (id == R.id.mis_alertas) {
 
-        } else if (id == R.id.nav_slideshow) {
+        } else if (id == R.id.add_alerta) {
 
         } else if (id == R.id.nav_manage) {
 
         } else if (id == R.id.nav_share) {
 
-        } else if (id == R.id.nav_send) {
+        } else if (id == R.id.nav_log_out) {
 
         }
 

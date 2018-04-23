@@ -8,6 +8,7 @@ import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.View;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -80,7 +81,6 @@ public class Alerts extends AppCompatActivity {
                             }
 
                         }
-//                            }
 
 
 
@@ -110,8 +110,10 @@ public class Alerts extends AppCompatActivity {
                             Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
                         }*/
                         Log.d(TAG, document.getId() + " => " +  document.getData());
+                        if(document.toObject(Alert.class)!= null){
+                            alertsList.add(document.toObject(Alert.class));
+                        }
 
-                        alertsList.add(document.toObject(Alert.class));
 
                     }
                     SetAdapter();
@@ -126,5 +128,14 @@ public class Alerts extends AppCompatActivity {
     private void SetAdapter() {
         adapter =  new AlertAdapter(alertsList);
         recyclerView.setAdapter(adapter);
+        adapter.notifyDataSetChanged();
+    }
+
+    private void agregarNuevaAlerta(View view){
+
+    }
+
+    private void aprobarNuevaAlerta(View view){
+
     }
 }

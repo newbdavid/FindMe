@@ -105,6 +105,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int localPointCounter;
     private int globalMaxPointCounter=0;
     private int currentNumberOfTracksOnFirebase;
+    private int numberOfAlerts;
 
     private ArrayList<RutaRecorrida> rutasRecorridas;
     private ArrayList<String> idsActiveSearches;
@@ -355,9 +356,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             Bundle bundle = new Bundle();
             bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
             bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
+            bundle.putInt("numberOfAlerts",numberOfAlerts);
+            bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
+            bundle.putString("Uid", username);
+            if(usuario.isUsuarioDinased()){
+                bundle.putBoolean("usuarioDinased",true);
+
+            }
+
             Intent intent = new Intent(this, NewAlertActivity.class);
             intent.putExtras(bundle);
-            startActivity(intent);
+            startActivityForResult(intent,1);
         } else if (id == R.id.nav_manage) {
 
         } else if (id == R.id.nav_share) {
@@ -403,7 +412,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         getLocationPermission();
         updateLocationUI();
         getDeviceLocation();
-        getCurrentnumberOfTracksInFirebase();
+        getCurrentnumberOfTracksAndAlertsInFirebase();
         setActiveSearchesToUserOnFirebase();
         //getPointsAndDrawOtherUsersPoints();
         mMap.setOnPolylineClickListener(this);
@@ -421,7 +430,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
 
-    private void getCurrentnumberOfTracksInFirebase() {
+    private void getCurrentnumberOfTracksAndAlertsInFirebase() {
 
             usuarios.document(username).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>(){
                 @Override
@@ -435,7 +444,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         } else{
                             Log.d(TAG, document.getId() + "There are no current tracks: "+currentNumberOfTracksOnFirebase);
                         }
-
+                        if(document.getLong("numberOfAlerts") != null){
+                            numberOfAlerts = document.getLong("numberOfAlerts").intValue();
+                        }
 
 
                     }else {
