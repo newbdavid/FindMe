@@ -342,16 +342,27 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         int id = item.getItemId();
 
         if (id == R.id.alertas) {
-            // Handle the camera action
+            Bundle bundle = new Bundle();
+            bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
+            Intent intent = new Intent(this, Alerts.class);
+            intent.putExtras(bundle);
+            startActivity(intent);
+
         } else if (id == R.id.mis_alertas) {
 
-        } else if (id == R.id.nav_slideshow) {
-
+        } else if (id == R.id.add_alerta) {
+            getDeviceLocation();
+            Bundle bundle = new Bundle();
+            bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
+            bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
+            Intent intent = new Intent(this, NewAlertActivity.class);
+            intent.putExtras(bundle);
+            startActivity(intent);
         } else if (id == R.id.nav_manage) {
 
         } else if (id == R.id.nav_share) {
 
-        } else if (id == R.id.nav_send) {
+        } else if (id == R.id.nav_log_out) {
             FirebaseAuth.getInstance().signOut();
             Intent i = new Intent(MapsActivity.this,RegistroActivity.class);
             startActivity(i);

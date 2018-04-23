@@ -38,6 +38,11 @@
     <string name="all_alerts">All Alerts</string>
     <string name="add_new_alert">Add new Alert</string>
     <string name="approve_alert">Approve Alert</string>
+    <string name="alert_type">Alert Type</string>
+    <string name="alert_Title">Alert Title</string>
+    <string name="alert_description">Alert Description</string>
+    <string name="alert_coordinates">Alert Coordinates</string>
+    <string name="send_new_alert">Send Alert</string>
 
     <!--Strings Related to Active Searches-->
     <string name="age">Age: </string>

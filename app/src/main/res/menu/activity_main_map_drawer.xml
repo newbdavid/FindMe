@@ -13,9 +13,9 @@
             android:icon="@drawable/ic_menu_gallery"
             android:title="Mis Alertas" />
         <item
-            android:id="@+id/nav_slideshow"
+            android:id="@+id/add_alerta"
             android:icon="@drawable/ic_menu_slideshow"
-            android:title="Slideshow" />
+            android:title="Añadir alertas" />
         <item
             android:id="@+id/nav_manage"
             android:icon="@drawable/ic_menu_manage"
@@ -29,7 +29,7 @@
                 android:icon="@drawable/ic_menu_share"
                 android:title="Share" />
             <item
-                android:id="@+id/nav_send"
+                android:id="@+id/nav_log_out"
                 android:icon="@drawable/ic_menu_send"
                 android:title="Log Out" />
         </menu>

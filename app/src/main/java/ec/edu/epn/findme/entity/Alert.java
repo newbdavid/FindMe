@@ -7,33 +7,35 @@ import com.google.firebase.firestore.GeoPoint;
  */
 
 public class Alert {
-    private transient boolean aproved;
+    private transient boolean approved;
     private String status;
     private String ownerUid;
     private String alertType;
     private String title;
     private String description;
     private GeoPoint location;
+    private long alertTimeMillis;
 
     public Alert() {
     }
 
-    public Alert(boolean aproved, String status, String ownerUid, String alertType, String title, String description, GeoPoint location) {
-        this.aproved = aproved;
+    public Alert(boolean approved, String status, String ownerUid, String alertType, String title, String description, GeoPoint location, long alertTimeMillis) {
+        this.approved = approved;
         this.status = status;
         this.ownerUid = ownerUid;
         this.alertType = alertType;
         this.title = title;
         this.description = description;
         this.location = location;
+        this.alertTimeMillis = alertTimeMillis;
     }
 
-    public boolean isAproved() {
-        return aproved;
+    public boolean isApproved() {
+        return approved;
     }
 
-    public void setAproved(boolean aproved) {
-        this.aproved = aproved;
+    public void setApproved(boolean approved) {
+        this.approved = approved;
     }
 
     public String getOwnerUid() {
@@ -82,5 +84,13 @@ public class Alert {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public long getAlertTimeMillis() {
+        return alertTimeMillis;
+    }
+
+    public void setAlertTimeMillis(long alertTimeMillis) {
+        this.alertTimeMillis = alertTimeMillis;
     }
 }
