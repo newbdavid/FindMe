@@ -51,10 +51,12 @@ public class Alerts extends AppCompatActivity {
         if(intent.hasExtra("selectedActiveSearchIds")){
             idsActiveSearches = intent.getExtras().getStringArrayList("selectedActiveSearchIds");
         }
+        adapter =  new AlertAdapter(alertsList);
 
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
+        recyclerView.setAdapter(adapter);
         getUsersWithSameSearchIds();
 
     }
@@ -75,7 +77,7 @@ public class Alerts extends AppCompatActivity {
 //                                if(Arrays.asList(idsActiveSearches).contains(searchIdsFromForeignUser.get(i).toString())){
                             if(idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())){
 
-                                Log.d(TAG, "Entro para dibujar");
+                                Log.d(TAG, "Entro para traer Alerts");
                                 i=searchIdsFromForeignUser.size();
                                 getAlertsFromThisUser(document.getId());
                             }
@@ -99,7 +101,7 @@ public class Alerts extends AppCompatActivity {
         //usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
 
 
-        usuarios.document(id).collection("alerts").whereGreaterThanOrEqualTo("lastTraveledMillis",longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+        usuarios.document(id).collection("alerts").whereGreaterThanOrEqualTo("alertTimeMillis",longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if(task.isSuccessful()){
@@ -126,8 +128,7 @@ public class Alerts extends AppCompatActivity {
     }
 
     private void SetAdapter() {
-        adapter =  new AlertAdapter(alertsList);
-        recyclerView.setAdapter(adapter);
+
         adapter.notifyDataSetChanged();
     }
 

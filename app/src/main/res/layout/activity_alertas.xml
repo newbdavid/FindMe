@@ -48,7 +48,8 @@
                     android:layout_marginTop="16dp"
                     android:id="@+id/add_new_alert"
                     android:onClick="agregarNuevaAlerta"
-                    android:textStyle="bold"/>
+                    android:textStyle="bold"
+                    android:layout_gravity="center"/>
 
                 <Button
                     android:layout_width="match_parent"
@@ -57,7 +58,8 @@
                     android:layout_marginTop="16dp"
                     android:id="@+id/approve_alert"
                     android:onClick="aprobarNuevaAlerta"
-                    android:textStyle="bold"/>
+                    android:textStyle="bold"
+                    android:layout_gravity="center"/>
 
 
             </LinearLayout>
