@@ -9,6 +9,8 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -18,6 +20,8 @@ import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
@@ -32,7 +36,8 @@ public class Alerts extends AppCompatActivity {
     private RecyclerView.LayoutManager layoutManager;
     private List<Alert> alertsList = new ArrayList<>();
     private ArrayList<String> idsActiveSearches;
-
+    private Button btnAddAlert,btnApproveAlert;
+    private TextView tvalertsTitle;
     private static final String TAG = Alerts.class.getSimpleName();
 
     FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder().setPersistenceEnabled(true).build();
@@ -41,23 +46,55 @@ public class Alerts extends AppCompatActivity {
     private String username = user.getUid();
     CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
 
+    private GeoPoint mLastKnownLocation;
+    private int numberOfAlerts;
+
+
+    private final static long SINCE_20_YEARS_AGO = 63070000;
     private long timeDiff = 864000000;//10 days
+    private boolean isUsuarioDinased = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_alertas);
         recyclerView = (RecyclerView) findViewById(R.id.alerts_recycle_view);
+        btnAddAlert =(Button) findViewById(R.id.add_new_alert);
+        btnApproveAlert = (Button) findViewById(R.id.approve_alert);
+        tvalertsTitle = (TextView) findViewById(R.id.alerts_title_tv);
         Intent intent = getIntent();
         if(intent.hasExtra("selectedActiveSearchIds")){
             idsActiveSearches = intent.getExtras().getStringArrayList("selectedActiveSearchIds");
         }
+        if(intent.hasExtra("usuarioDinased")){
+            isUsuarioDinased = intent.getExtras().getBoolean("usuarioDinased");
+        }
+        if(intent.hasExtra("alertLatitude")){
+            mLastKnownLocation = new GeoPoint(intent.getExtras().getDouble("alertLatitude"),intent.getExtras().getDouble("alertLongitude"));
+        }
+        if(intent.hasExtra("numberOfAlerts")){
+            numberOfAlerts = intent.getExtras().getInt("numberOfAlerts");
+        }
+
+        btnAddAlert.setEnabled(false);
+        btnApproveAlert.setEnabled(isUsuarioDinased);
+
+
         adapter =  new AlertAdapter(alertsList);
 
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(adapter);
-        getUsersWithSameSearchIds();
+
+        if(intent.hasExtra("showAllAlerts")){
+            if(intent.getExtras().getBoolean("showAllAlerts")){
+                getUsersWithSameSearchIds();
+                tvalertsTitle.setText("All Recent Alerts");
+            }else{
+                getAlertsFromThisUser(username,true);
+            }
+        }
+
 
     }
 
@@ -79,15 +116,10 @@ public class Alerts extends AppCompatActivity {
 
                                 Log.d(TAG, "Entro para traer Alerts");
                                 i=searchIdsFromForeignUser.size();
-                                getAlertsFromThisUser(document.getId());
+                                getAlertsFromThisUser(document.getId(),false);
                             }
 
                         }
-
-
-
-
-
                     }
                 } else {
                     Log.d(TAG, "Error getting documents: ", task.getException());
@@ -96,12 +128,17 @@ public class Alerts extends AppCompatActivity {
         });
     }
 
-    private void getAlertsFromThisUser(final String id) {
-        long longtimeToSearch = System.currentTimeMillis()-timeDiff;
-        //usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+    private void getAlertsFromThisUser(final String id, final boolean queryAllFromThisUser) {
+        Query searchAlerts;
+        long longtimeToSearch;
+        if(queryAllFromThisUser){
+            searchAlerts = usuarios.document(id).collection("alerts");
+        } else {
+            longtimeToSearch = System.currentTimeMillis()-timeDiff;
+            searchAlerts = usuarios.document(id).collection("alerts").whereGreaterThanOrEqualTo("alertTimeMillis",longtimeToSearch);
+        }
 
-
-        usuarios.document(id).collection("alerts").whereGreaterThanOrEqualTo("alertTimeMillis",longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+        searchAlerts.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if(task.isSuccessful()){
@@ -115,8 +152,6 @@ public class Alerts extends AppCompatActivity {
                         if(document.toObject(Alert.class)!= null){
                             alertsList.add(document.toObject(Alert.class));
                         }
-
-
                     }
                     SetAdapter();
                 }else {
@@ -130,13 +165,24 @@ public class Alerts extends AppCompatActivity {
     private void SetAdapter() {
 
         adapter.notifyDataSetChanged();
+        btnAddAlert.setEnabled(true);
     }
 
-    private void agregarNuevaAlerta(View view){
+    public void agregarNuevaAlerta(View view){
+        Bundle bundle = new Bundle();
+        bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
+        bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
+        bundle.putInt("numberOfAlerts",numberOfAlerts);
+        bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
+        bundle.putString("Uid", username);
+        bundle.putBoolean("usuarioDinased",isUsuarioDinased);
 
+        Intent intent = new Intent(this, NewAlertActivity.class);
+        intent.putExtras(bundle);
+        startActivityForResult(intent,1);
     }
 
-    private void aprobarNuevaAlerta(View view){
+    public void aprobarNuevaAlerta(View view){
 
     }
 }

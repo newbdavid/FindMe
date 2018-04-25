@@ -14,12 +14,14 @@
             android:layout_height="43dp"
             android:gravity="center"
             android:src="@drawable/ic_action_name"
-            android:id="@+id/alertImageView"/>
+            android:id="@+id/alertImageView"
+            android:layout_gravity="center"/>
         <CheckBox
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
-            android:id="@+id/chkAlert"/>
+            android:id="@+id/chkAlert"
+            android:layout_gravity="center"/>
 
     </LinearLayout>
 

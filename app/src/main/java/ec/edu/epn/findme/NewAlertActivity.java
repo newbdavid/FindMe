@@ -123,8 +123,11 @@ public class NewAlertActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         if(intent.hasExtra("usuarioDinased")){
-            alertApproved = true;
-            alertStatus = "Checked";
+            if(intent.getExtras().getBoolean("usuarioDinased")){
+                alertApproved = true;
+                alertStatus = "Checked";
+            }
+
         }
         if(alertType.getSelectedItem().toString().equals("Pista")){
             alertTypestr = "Pista";

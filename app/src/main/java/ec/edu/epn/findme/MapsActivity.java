@@ -106,6 +106,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int globalMaxPointCounter=0;
     private int currentNumberOfTracksOnFirebase;
     private int numberOfAlerts;
+    private boolean isUsuarioDinased;
 
     private ArrayList<RutaRecorrida> rutasRecorridas;
     private ArrayList<String> idsActiveSearches;
@@ -343,14 +344,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         int id = item.getItemId();
 
         if (id == R.id.alertas) {
+            getDeviceLocation();
             Bundle bundle = new Bundle();
             bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
+            bundle.putBoolean("usuarioDinased",isUsuarioDinased);
+            bundle.putBoolean("showAllAlerts",true);
+            bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
+            bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
+            bundle.putInt("numberOfAlerts",numberOfAlerts);
+
             Intent intent = new Intent(this, Alerts.class);
             intent.putExtras(bundle);
             startActivity(intent);
 
         } else if (id == R.id.mis_alertas) {
+            getDeviceLocation();
+            Bundle bundle = new Bundle();
+            bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
+            bundle.putBoolean("usuarioDinased",isUsuarioDinased);
+            bundle.putBoolean("showAllAlerts",false);
+            bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
+            bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
+            bundle.putInt("numberOfAlerts",numberOfAlerts);
 
+            Intent intent = new Intent(this, Alerts.class);
+            intent.putExtras(bundle);
+            startActivity(intent);
         } else if (id == R.id.add_alerta) {
             getDeviceLocation();
             Bundle bundle = new Bundle();
@@ -359,10 +378,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             bundle.putInt("numberOfAlerts",numberOfAlerts);
             bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
             bundle.putString("Uid", username);
-            if(usuario.isUsuarioDinased()){
-                bundle.putBoolean("usuarioDinased",true);
-
-            }
+            bundle.putBoolean("usuarioDinased",isUsuarioDinased);
 
             Intent intent = new Intent(this, NewAlertActivity.class);
             intent.putExtras(bundle);
@@ -467,7 +483,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     usuario = document.toObject(Usuario.class);
                     Log.d(TAG, "UserData: "+usuario.getNombres());
                     searcherNameView.setText(usuario.getNombres()+" "+usuario.getApellidos());
-                    if(usuario.isUsuarioDinased()){
+                    isUsuarioDinased = usuario.isUsuarioDinased();
+                    if(isUsuarioDinased){
                         searcherTypeView.setText("DINASED");
                     } else{
                         searcherTypeView.setText("Buscador");
