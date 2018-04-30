@@ -13,6 +13,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -23,9 +24,12 @@ import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.SetOptions;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import ec.edu.epn.findme.Adapters.AlertAdapter;
 import ec.edu.epn.findme.entity.Alert;
@@ -36,7 +40,7 @@ public class Alerts extends AppCompatActivity {
     private RecyclerView.LayoutManager layoutManager;
     private List<Alert> alertsList = new ArrayList<>();
     private ArrayList<String> idsActiveSearches;
-    private Button btnAddAlert,btnApproveAlert;
+    private Button btnAddAlert,btnApproveAlert,btnRejectAlert;
     private TextView tvalertsTitle;
     private static final String TAG = Alerts.class.getSimpleName();
 
@@ -53,6 +57,7 @@ public class Alerts extends AppCompatActivity {
     private final static long SINCE_20_YEARS_AGO = 63070000;
     private long timeDiff = 864000000;//10 days
     private boolean isUsuarioDinased = false;
+    private boolean approveAlert;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,6 +65,7 @@ public class Alerts extends AppCompatActivity {
         recyclerView = (RecyclerView) findViewById(R.id.alerts_recycle_view);
         btnAddAlert =(Button) findViewById(R.id.add_new_alert);
         btnApproveAlert = (Button) findViewById(R.id.approve_alert);
+        btnRejectAlert = (Button) findViewById(R.id.reject_alert);
         tvalertsTitle = (TextView) findViewById(R.id.alerts_title_tv);
         Intent intent = getIntent();
         if(intent.hasExtra("selectedActiveSearchIds")){
@@ -77,6 +83,7 @@ public class Alerts extends AppCompatActivity {
 
         btnAddAlert.setEnabled(false);
         btnApproveAlert.setEnabled(isUsuarioDinased);
+        btnRejectAlert.setEnabled(isUsuarioDinased);
 
 
         adapter =  new AlertAdapter(alertsList);
@@ -183,6 +190,60 @@ public class Alerts extends AppCompatActivity {
     }
 
     public void aprobarNuevaAlerta(View view){
+        approveAlert = true;
+        for(Alert alert : alertsList){
+            if(alert.isApproved()){
+                Log.d(TAG, "Esta marcado"+alert.getOwnerUid() + " => " +  alert.getAlertTimeMillis());
+                getAlertIdOnFirebase(alert.getOwnerUid(),alert.getAlertTimeMillis());
+                alert.setStatus("Checked");
+                adapter.notifyDataSetChanged();
+            }
+        }
 
+    }
+
+    public void rechazarNuevaAlerta(View view){
+        approveAlert = false;
+        for(Alert alert : alertsList){
+            if(alert.isApproved()){
+                getAlertIdOnFirebase(alert.getOwnerUid(),alert.getAlertTimeMillis());
+                alert.setStatus("Rejected");
+                adapter.notifyDataSetChanged();
+            }
+        }
+    }
+
+    private void getAlertIdOnFirebase(final String ownerUid, long alertTimeMillis) {
+        usuarios.document(ownerUid).collection("alerts").whereEqualTo("alertTimeMillis",alertTimeMillis).whereEqualTo("ownerUid",ownerUid).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if(task.isSuccessful()){
+                    for(DocumentSnapshot document : task.getResult()){
+                        Log.d(TAG, "Encontrado el id de alerta"+document.getId());
+                        updateAlertStatus(document.getId(),ownerUid);
+                    }
+
+                }
+            }
+        });
+    }
+
+    private void updateAlertStatus(final String id, String ownerUid) {
+        final Map<String,Object> newStatus = new HashMap<>();
+
+        if(approveAlert){
+            newStatus.put("approved",true);
+            newStatus.put("status","Checked");
+        } else {
+            newStatus.put("approved",false);
+            newStatus.put("status","Rejected");
+        }
+        usuarios.document(ownerUid).collection("alerts").document(id).set(newStatus, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(TAG, "Entro y actualizo: "+id + " "+newStatus);
+
+            }
+        });
     }
 }

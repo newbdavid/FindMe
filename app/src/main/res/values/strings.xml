@@ -38,6 +38,7 @@
     <string name="all_alerts">All Alerts</string>
     <string name="add_new_alert">Add new Alert</string>
     <string name="approve_alert">Approve Alert</string>
+    <string name="reject_alert">Reject Alert</string>
     <string name="alert_type">Alert Type</string>
     <string name="alert_Title">Alert Title</string>
     <string name="alert_description">Alert Description</string>
