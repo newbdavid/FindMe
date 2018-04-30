@@ -26,7 +26,7 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.ViewHolder>{
     public class ViewHolder extends RecyclerView.ViewHolder{
         public TextView type, title, description, location, status;
         public ImageView typeImageView;
-        public CheckBox approved;
+        public CheckBox reviewed;
 
         public ViewHolder(View view){
             super(view);
@@ -36,7 +36,7 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.ViewHolder>{
             location = (TextView) view.findViewById(R.id.txtAlertLocation);
             status = (TextView) view.findViewById(R.id.txtEstatusAlerta);
             typeImageView = (ImageView) view.findViewById(R.id.alertImageView);
-            approved =(CheckBox) view.findViewById(R.id.chkAlert);
+            reviewed =(CheckBox) view.findViewById(R.id.chkAlert);
         }
     }
 
@@ -75,14 +75,14 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.ViewHolder>{
             holder.typeImageView.setImageResource(R.drawable.ic_binocular_avistamiento_background);
         }
 
-        holder.approved.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        holder.reviewed.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                AlertAdapter.this.alertsList.get(position).setApproved(b);
+                AlertAdapter.this.alertsList.get(position).setReviewed(b);
             }
         });
-        if(alert.isApproved()){
-            holder.approved.setChecked(true);
+        if(alert.isReviewed()){
+            holder.reviewed.setChecked(true);
         }
     }
 

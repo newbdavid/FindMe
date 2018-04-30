@@ -157,7 +157,10 @@ public class Alerts extends AppCompatActivity {
                         }*/
                         Log.d(TAG, document.getId() + " => " +  document.getData());
                         if(document.toObject(Alert.class)!= null){
-                            alertsList.add(document.toObject(Alert.class));
+                            if(document.get("status").equals("Checked")){
+                                alertsList.add(document.toObject(Alert.class));
+                            }
+
                         }
                     }
                     SetAdapter();
@@ -192,7 +195,7 @@ public class Alerts extends AppCompatActivity {
     public void aprobarNuevaAlerta(View view){
         approveAlert = true;
         for(Alert alert : alertsList){
-            if(alert.isApproved()){
+            if(alert.isReviewed()){
                 Log.d(TAG, "Esta marcado"+alert.getOwnerUid() + " => " +  alert.getAlertTimeMillis());
                 getAlertIdOnFirebase(alert.getOwnerUid(),alert.getAlertTimeMillis());
                 alert.setStatus("Checked");
@@ -205,7 +208,7 @@ public class Alerts extends AppCompatActivity {
     public void rechazarNuevaAlerta(View view){
         approveAlert = false;
         for(Alert alert : alertsList){
-            if(alert.isApproved()){
+            if(alert.isReviewed()){
                 getAlertIdOnFirebase(alert.getOwnerUid(),alert.getAlertTimeMillis());
                 alert.setStatus("Rejected");
                 adapter.notifyDataSetChanged();
@@ -230,12 +233,12 @@ public class Alerts extends AppCompatActivity {
 
     private void updateAlertStatus(final String id, String ownerUid) {
         final Map<String,Object> newStatus = new HashMap<>();
-
+        newStatus.put("reviewed",true);
         if(approveAlert){
-            newStatus.put("approved",true);
+
             newStatus.put("status","Checked");
         } else {
-            newStatus.put("approved",false);
+
             newStatus.put("status","Rejected");
         }
         usuarios.document(ownerUid).collection("alerts").document(id).set(newStatus, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {

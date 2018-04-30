@@ -7,7 +7,7 @@ import com.google.firebase.firestore.GeoPoint;
  */
 
 public class Alert {
-    private transient boolean approved;
+    private transient boolean reviewed;
     private String status;
     private String ownerUid;
     private String alertType;
@@ -19,8 +19,8 @@ public class Alert {
     public Alert() {
     }
 
-    public Alert(boolean approved, String status, String ownerUid, String alertType, String title, String description, GeoPoint location, long alertTimeMillis) {
-        this.approved = approved;
+    public Alert(boolean reviewed, String status, String ownerUid, String alertType, String title, String description, GeoPoint location, long alertTimeMillis) {
+        this.reviewed = reviewed;
         this.status = status;
         this.ownerUid = ownerUid;
         this.alertType = alertType;
@@ -30,12 +30,12 @@ public class Alert {
         this.alertTimeMillis = alertTimeMillis;
     }
 
-    public boolean isApproved() {
-        return approved;
+    public boolean isReviewed() {
+        return reviewed;
     }
 
-    public void setApproved(boolean approved) {
-        this.approved = approved;
+    public void setReviewed(boolean reviewed) {
+        this.reviewed = reviewed;
     }
 
     public String getOwnerUid() {

@@ -116,7 +116,7 @@ public class NewAlertActivity extends AppCompatActivity {
         alertLocation.setError(null);
         sendAlertButton.setError(null);
 
-        boolean alertApproved = false;
+        boolean alertReviewed = false;
         String alertStatus = "Pending";
         String alertTypestr = "Avistamiento";
         GeoPoint alertGeopoint;
@@ -124,7 +124,7 @@ public class NewAlertActivity extends AppCompatActivity {
         Intent intent = getIntent();
         if(intent.hasExtra("usuarioDinased")){
             if(intent.getExtras().getBoolean("usuarioDinased")){
-                alertApproved = true;
+                alertReviewed = true;
                 alertStatus = "Checked";
             }
 
@@ -156,10 +156,10 @@ public class NewAlertActivity extends AppCompatActivity {
         if(cancel){
             focusView.requestFocus();
         }else{
-            alert =  new Alert(alertApproved,alertStatus,username,alertTypestr,alertTitle.getText().toString(),
+            alert =  new Alert(alertReviewed,alertStatus,username,alertTypestr,alertTitle.getText().toString(),
                     alertDescription.getText().toString(),alertGeopoint,System.currentTimeMillis());
             Map<String,Object> alertToSend = new HashMap<>();
-            alertToSend.put("approved",alert.isApproved());
+            alertToSend.put("reviewed",alert.isReviewed());
             alertToSend.put("status",alert.getStatus());
             alertToSend.put("ownerUid",alert.getOwnerUid());
             alertToSend.put("alertType",alert.getAlertType());
