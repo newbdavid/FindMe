@@ -234,7 +234,7 @@ public class Alerts extends AppCompatActivity {
     private void updateAlertStatus(final String id, String ownerUid) {
         final Map<String,Object> newStatus = new HashMap<>();
         newStatus.put("reviewed",true);
-        if(approveAlert){
+        if( approveAlert ){
 
             newStatus.put("status","Checked");
         } else {
