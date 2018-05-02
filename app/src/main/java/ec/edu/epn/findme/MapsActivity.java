@@ -516,10 +516,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if(isTracking == false){
                     startLocationUpdates();
                     fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),ic_stop_navigation));
+                    fab.setBackgroundTintList(getResources().getColorStateList(R.color.colorAccent));
                     isTracking = true;
                 }else if (isTracking != false) {
                     stopLocationUpdates();
                     fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),R.drawable.ic_navigation_start));
+                    fab.setBackgroundTintList(getResources().getColorStateList(R.color.colorGreenStartNavigation));
                     isTracking = false;
                 }
 
@@ -560,7 +562,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @SuppressWarnings({"MissingPermission"})
     private void startLocationUpdates() {
             getDeviceLocation();
-            firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true));
+            firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(this,R.color.zeroToOneHour)));
             localPointCounter = 0;
             mLocationCallback = new LocationCallback() {
                 @Override
@@ -669,6 +671,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void SetPointsIntoFirebase(final TrackObject trackObjectToAdd, int i ) {
+        String friendlyTimePastLastTraveled = getTimePastLastTraveled(0);
+        firstPolyline.setTag(friendlyTimePastLastTraveled+"0 segundos");
         final Map<String,Object> lastSeenTrackData = new HashMap<>();
         lastSeenTrackData.put("lastSeen",trackObjectToAdd.getLastTraveledFieldValue());
         lastSeenTrackData.put("lastUbication",trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1));
