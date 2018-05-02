@@ -9,6 +9,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
+    android:background="@color/colorRegistry"
     tools:context="ec.edu.epn.findme.ActiveSearches">
 
     <ScrollView
@@ -23,11 +24,12 @@
             android:orientation="vertical">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/active_searches_title"
                 android:textAlignment="center"
                 android:layout_gravity="center"
+                android:background="@drawable/grey_white_skyblue_background"
                 android:textSize="26sp"/>
 
             <ListView
@@ -40,6 +42,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/active_searches_button_enterToMap"
                 android:layout_marginTop="16dp"
+                android:background="@drawable/rectangular_button"
                 android:id="@+id/btnGoWithSelectedIds"
                 android:onClick="entrarConSearchId"
                 android:textStyle="bold"/>

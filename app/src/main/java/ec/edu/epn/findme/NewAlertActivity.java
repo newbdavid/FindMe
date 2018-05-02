@@ -208,6 +208,7 @@ public class NewAlertActivity extends AppCompatActivity {
                 intent.putExtras(bundle);
                 startActivity(intent);*/
                 finishActivity(1);
+                finish();
             }
         });
 

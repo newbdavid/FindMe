@@ -134,5 +134,8 @@ public class ActiveSearches extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         FirebaseAuth.getInstance().signOut();
+        Log.d(TAG, "onAuthStateChanged:signed_out");
+        Intent intent = new Intent(ActiveSearches.this, RegistroActivity.class);
+        startActivity(intent);
     }
 }

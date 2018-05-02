@@ -46,8 +46,9 @@ public class Alerts extends AppCompatActivity {
 
     FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder().setPersistenceEnabled(true).build();
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
-    private FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-    private String username = user.getUid();
+    private FirebaseUser user ;
+    private String username;
+    private FirebaseAuth.AuthStateListener mAuthListener;
     CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
 
     private GeoPoint mLastKnownLocation;
@@ -62,6 +63,25 @@ public class Alerts extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_alertas);
+
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                user = FirebaseAuth.getInstance().getCurrentUser();
+                if (user != null) {
+                    // User is signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_in:" + user.getUid());
+                    username = user.getUid();
+                } else {
+                    // User is signed out
+                    Log.d(TAG, "onAuthStateChanged:signed_out");
+                    Intent intent = new Intent(Alerts.this, RegistroActivity.class);
+                    startActivity(intent);
+                }
+                // ...
+            }
+        };
+
         recyclerView = (RecyclerView) findViewById(R.id.alerts_recycle_view);
         btnAddAlert =(Button) findViewById(R.id.add_new_alert);
         btnApproveAlert = (Button) findViewById(R.id.approve_alert);
@@ -97,9 +117,12 @@ public class Alerts extends AppCompatActivity {
             if(intent.getExtras().getBoolean("showAllAlerts")){
                 getUsersWithSameSearchIds();
                 tvalertsTitle.setText("All Recent Alerts");
-            }else{
+            }else if(numberOfAlerts == 0){
+                SetAdapter();
+            } else{
                 getAlertsFromThisUser(username,true);
             }
+
         }
 
 
