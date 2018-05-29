@@ -51,6 +51,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 
@@ -165,9 +166,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
-
-
 
     }
 
@@ -599,6 +597,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             firstPolyline.setPoints(points);
                             mLastKnownLocation = location;
                             localPointCounter++;
+                            if(localPointCounter%5==0){
+                                GeoPoint userLastLocation = new GeoPoint(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude());
+                                setUserLastLocation(FieldValue.serverTimestamp(),userLastLocation,System.currentTimeMillis());
+                            }
                         }
                     }
                 }
@@ -673,6 +675,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void SetPointsIntoFirebase(final TrackObject trackObjectToAdd, int i ) {
         String friendlyTimePastLastTraveled = getTimePastLastTraveled(0);
         firstPolyline.setTag(friendlyTimePastLastTraveled+"0 segundos");
+
+        setUserLastLocation(trackObjectToAdd.getLastTraveledFieldValue(),
+                trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1),trackObjectToAdd.getLastTraveledMillis());
         final Map<String,Object> lastSeenTrackData = new HashMap<>();
         lastSeenTrackData.put("lastSeen",trackObjectToAdd.getLastTraveledFieldValue());
         lastSeenTrackData.put("lastUbication",trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1));
@@ -731,6 +736,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
         firstPolyline = null;
+    }
+
+    private void setUserLastLocation(FieldValue lastTraveledFieldValue, GeoPoint userLastLocation, long lastTraveledMillis) {
+        final Map<String,Object> lastSeenTrackData = new HashMap<>();
+        lastSeenTrackData.put("lastSeen",lastTraveledFieldValue);
+        lastSeenTrackData.put("lastUbication",userLastLocation);
+        lastSeenTrackData.put("lastSeenMillis",lastTraveledMillis);
+
+        userLastLocations.document(username).set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(TAG, "Entro en lastLocations: ");
+
+            }
+        });
     }
 
     private void getPointsAndDrawOtherUsersPoints (){
