@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import ec.edu.epn.findme.entity.Alert;
+import ec.edu.epn.findme.enums.AlertStatusEnum;
 
 public class NewAlertActivity extends AppCompatActivity {
     Spinner alertType;
@@ -117,7 +118,7 @@ public class NewAlertActivity extends AppCompatActivity {
         sendAlertButton.setError(null);
 
         boolean alertReviewed = false;
-        String alertStatus = "Pending";
+        String alertStatus = AlertStatusEnum.PENDING.toString();
         String alertTypestr = "Avistamiento";
         GeoPoint alertGeopoint;
 
@@ -125,7 +126,7 @@ public class NewAlertActivity extends AppCompatActivity {
         if(intent.hasExtra("usuarioDinased")){
             if(intent.getExtras().getBoolean("usuarioDinased")){
                 alertReviewed = true;
-                alertStatus = "Checked";
+                alertStatus = AlertStatusEnum.CHECKED.toString();
             }
 
         }

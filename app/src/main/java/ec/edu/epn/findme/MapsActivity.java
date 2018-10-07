@@ -37,6 +37,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
@@ -66,10 +67,12 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import ec.edu.epn.findme.AuxiliaryClasses.TimeToColor;
+import ec.edu.epn.findme.entity.Alert;
 import ec.edu.epn.findme.entity.LastLocation;
 import ec.edu.epn.findme.entity.RutaRecorrida;
 import ec.edu.epn.findme.entity.TrackObject;
 import ec.edu.epn.findme.entity.Usuario;
+import ec.edu.epn.findme.enums.AlertTypeEnum;
 
 import static ec.edu.epn.findme.R.drawable.ic_stop_navigation;
 
@@ -495,8 +498,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void startTrackingPosition() {
         createLocationRequest();
-
-
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(mLocationRequest);
         SettingsClient client = LocationServices.getSettingsClient(this);
@@ -774,15 +775,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         Log.d(TAG, "Entro para dibujar");
                                         i=searchIdsFromForeignUser.size();
                                         getTrackInformation(document.getId());
+                                        getAlertsInformation(document.getId());
                                     }
 
                                 }
 //                            }
-
-
-
-
-
                         }
                     } else {
                         Log.d(TAG, "Error getting documents: ", task.getException());
@@ -791,6 +788,40 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
 //        }
 
+    }
+
+    private void getAlertsInformation(String id) {
+        usuarios.document(id).collection("alerts").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if(task.isSuccessful()){
+                    for(DocumentSnapshot document : task.getResult()){
+                        //Log.d(TAG, id + " and "+username);
+                        /*if(id.equals(username) ){
+                            currentNumberOfTracksOnFirebase+=1;
+                            Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
+                        }*/
+                        Log.d(TAG, document.getId() + " => " +  document.get("description"));
+                        Alert alert = document.toObject(Alert.class);
+                        int alertIcon = 0;
+                        if(alert.getAlertType().equals(AlertTypeEnum.PISTA.toString())){
+                            alertIcon = R.drawable.ic_action_name;
+                            mMap.addMarker(new MarkerOptions().alpha(0.6f).position(alert.getLocationLatLng()).title(alert.getTitle()).icon(BitmapDescriptorFactory.fromResource(alertIcon)));
+                        } else if (alert.getAlertType().equals(AlertTypeEnum.AVISTAMIENTO.toString())){
+                            //alertIcon = R.drawable.ic_binocular_avistamiento_background;
+                            //Bitmap bm = BitmapFactory.decodeResource(getResources(),R.drawable.ic_binocular_avistamiento_background);
+
+                            //mMap.addMarker(new MarkerOptions().alpha(0.6f).position(alert.getLocationLatLng()).title(alert.getTitle()).icon(BitmapDescriptorFactory.fromAsset()));
+                        }
+
+
+
+                    }
+                }else {
+
+                }
+            }
+        });
     }
 
     private void getTrackInformation(final String id) {
@@ -859,14 +890,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void drawLastSeenUsersMarkers(String id, LastLocation lastLocation) {
-        mMap.addMarker(new MarkerOptions().alpha(0.4f).position(lastLocation.getLastUbicationLatLng()).title(id));
+    private void drawLastSeenUsersMarkers(String userUid, final LastLocation lastLocation) {
+        userPersonalData.document(userUid).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>(){
+
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()){
+                    DocumentSnapshot document = task.getResult();
+                    Log.d(TAG, "UserData: "+document.getData());
+                    Usuario userFromLastLocation = document.toObject(Usuario.class);
+                    Log.d(TAG, "UserData: "+userFromLastLocation.getNombres());
+                    String nameToShow = userFromLastLocation.getNombres()+" "+userFromLastLocation.getApellidos();
+                    mMap.addMarker(new MarkerOptions().alpha(0.4f).position(lastLocation.getLastUbicationLatLng()).title(nameToShow).icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_seeker)));
+                } else {
+                    Log.d(TAG, "Error getting documents of that Uid: ", task.getException());
+                }
+            }
+        });
     }
 
     @Override
     public void onPolylineClick(Polyline polyline) {
         Toast.makeText(this,"Tiempo desde la ultima pasada "+ polyline.getTag().toString(),Toast.LENGTH_LONG).show();
     }
+
+    
+
 
     public void putLastTraveledMillisIntoOldData(){
 

@@ -1,5 +1,6 @@
 package ec.edu.epn.findme.entity;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.firestore.GeoPoint;
 
 /**
@@ -28,6 +29,11 @@ public class Alert {
         this.description = description;
         this.location = location;
         this.alertTimeMillis = alertTimeMillis;
+    }
+
+    public LatLng getLocationLatLng(){
+        LatLng lastUbication = new LatLng(this.location.getLatitude(),this.location.getLongitude());
+        return lastUbication;
     }
 
     public boolean isReviewed() {

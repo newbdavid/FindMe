@@ -33,6 +33,7 @@ import java.util.Map;
 
 import ec.edu.epn.findme.Adapters.AlertAdapter;
 import ec.edu.epn.findme.entity.Alert;
+import ec.edu.epn.findme.enums.AlertStatusEnum;
 
 public class Alerts extends AppCompatActivity {
     private RecyclerView recyclerView;
@@ -64,10 +65,12 @@ public class Alerts extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_alertas);
 
+        user = FirebaseAuth.getInstance().getCurrentUser();
+        username = user.getUid();
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                user = FirebaseAuth.getInstance().getCurrentUser();
+
                 if (user != null) {
                     // User is signed in
                     Log.d(TAG, "onAuthStateChanged:signed_in:" + user.getUid());
@@ -120,6 +123,7 @@ public class Alerts extends AppCompatActivity {
             }else if(numberOfAlerts == 0){
                 SetAdapter();
             } else{
+                Log.d(TAG,"este es el username: "+username);
                 getAlertsFromThisUser(username,true);
             }
 
@@ -180,7 +184,9 @@ public class Alerts extends AppCompatActivity {
                         }*/
                         Log.d(TAG, document.getId() + " => " +  document.getData());
                         if(document.toObject(Alert.class)!= null){
-                            if(document.get("status").equals("Checked")){
+                            if(!document.get("status").equals(AlertStatusEnum.CHECKED.toString())&&isUsuarioDinased){
+                                alertsList.add(document.toObject(Alert.class));
+                            } else {
                                 alertsList.add(document.toObject(Alert.class));
                             }
 
@@ -221,7 +227,7 @@ public class Alerts extends AppCompatActivity {
             if(alert.isReviewed()){
                 Log.d(TAG, "Esta marcado"+alert.getOwnerUid() + " => " +  alert.getAlertTimeMillis());
                 getAlertIdOnFirebase(alert.getOwnerUid(),alert.getAlertTimeMillis());
-                alert.setStatus("Checked");
+                alert.setStatus(AlertStatusEnum.CHECKED.toString());
                 adapter.notifyDataSetChanged();
             }
         }
@@ -233,7 +239,7 @@ public class Alerts extends AppCompatActivity {
         for(Alert alert : alertsList){
             if(alert.isReviewed()){
                 getAlertIdOnFirebase(alert.getOwnerUid(),alert.getAlertTimeMillis());
-                alert.setStatus("Rejected");
+                alert.setStatus(AlertStatusEnum.REJECTED.toString());
                 adapter.notifyDataSetChanged();
             }
         }
@@ -259,10 +265,10 @@ public class Alerts extends AppCompatActivity {
         newStatus.put("reviewed",true);
         if( approveAlert ){
 
-            newStatus.put("status","Checked");
+            newStatus.put("status",AlertStatusEnum.CHECKED.toString());
         } else {
 
-            newStatus.put("status","Rejected");
+            newStatus.put("status",AlertStatusEnum.REJECTED.toString());
         }
         usuarios.document(ownerUid).collection("alerts").document(id).set(newStatus, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
