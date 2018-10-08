@@ -806,14 +806,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         int alertIcon = 0;
                         if(alert.getAlertType().equals(AlertTypeEnum.PISTA.toString())){
                             alertIcon = R.drawable.ic_action_name;
-                            mMap.addMarker(new MarkerOptions().alpha(0.6f).position(alert.getLocationLatLng()).title(alert.getTitle()).icon(BitmapDescriptorFactory.fromResource(alertIcon)));
                         } else if (alert.getAlertType().equals(AlertTypeEnum.AVISTAMIENTO.toString())){
-                            //alertIcon = R.drawable.ic_binocular_avistamiento_background;
+                            alertIcon = R.drawable.ic_binocular_avistamiento_background;
                             //Bitmap bm = BitmapFactory.decodeResource(getResources(),R.drawable.ic_binocular_avistamiento_background);
-
-                            //mMap.addMarker(new MarkerOptions().alpha(0.6f).position(alert.getLocationLatLng()).title(alert.getTitle()).icon(BitmapDescriptorFactory.fromAsset()));
+                            //Bitmap bm = BitmapFactory.decodeFile("main/ic_binocular_avistamiento-web.png");
                         }
-
+                        mMap.addMarker(new MarkerOptions().alpha(0.6f).position(alert.getLocationLatLng()).title(alert.getTitle()).icon(BitmapDescriptorFactory.fromResource(alertIcon)));
 
 
                     }
