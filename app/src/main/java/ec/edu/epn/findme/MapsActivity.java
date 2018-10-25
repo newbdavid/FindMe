@@ -1,5 +1,6 @@
 package ec.edu.epn.findme;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -63,7 +64,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import ec.edu.epn.findme.AuxiliaryClasses.TimeToColor;
@@ -83,10 +83,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int NEAR_ZOOM = 16;
     private static final int NORMAL_LOCATION_INTERVAL = 15000;
     private static final int FASTEST_PERMITED_LOCATION_INTERVAL = 5000;
+    private static final int ALERTS_REQUEST_CODE = 1;
     private static final String TAG = MapsActivity.class.getSimpleName();
-    private UUID ooooowww;
+
     private GoogleMap mMap;
     private boolean mLocationPermissionGranted = false;
+    private boolean resultFromOuterActivityObtained = false;
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private LocationRequest mLocationRequest;
@@ -192,19 +194,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState){
         super.onRestoreInstanceState(savedInstanceState);
-
-        if(savedInstanceState.getDouble("LastKnownLocationLatitude")!= mDefaultLocation.latitude){
-            mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
-            mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
-            LatLng actualPosition = new LatLng(mLastKnownLocation.getLatitude(),
-                    mLastKnownLocation.getLongitude());
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
-            mMap.animateCamera(cameraUpdate);
+        if(resultFromOuterActivityObtained==false){
+            if(savedInstanceState.getDouble("LastKnownLocationLatitude")!= mDefaultLocation.latitude){
+                mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
+                mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
+                LatLng actualPosition = new LatLng(mLastKnownLocation.getLatitude(),
+                        mLastKnownLocation.getLongitude());
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
+                mMap.animateCamera(cameraUpdate);
+            }
         }
+
         rutasRecorridas = savedInstanceState.getParcelableArrayList("PolylineArrayList");
         List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size()-1).getPolyline().getPoints();
         Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
         firstPolyline.setPoints(points);
+        resultFromOuterActivityObtained = false;
     }
 
     private void getLocationPermission() {
@@ -356,7 +361,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             Intent intent = new Intent(this, Alerts.class);
             intent.putExtras(bundle);
-            startActivity(intent);
+            //startActivity(intent);
+            startActivityForResult(intent,ALERTS_REQUEST_CODE);
 
         } else if (id == R.id.mis_alertas) {
             getDeviceLocation();
@@ -370,7 +376,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             Intent intent = new Intent(this, Alerts.class);
             intent.putExtras(bundle);
-            startActivity(intent);
+            startActivityForResult(intent,ALERTS_REQUEST_CODE);
         } else if (id == R.id.add_alerta) {
             getDeviceLocation();
             Bundle bundle = new Bundle();
@@ -397,6 +403,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout_main);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent result){
+        if(requestCode == ALERTS_REQUEST_CODE){
+            if(resultCode == Activity.RESULT_OK){
+                Bundle resultData = result.getExtras();
+                if(result.hasExtra("alertLatitude")&&result.hasExtra("alertLongitude")){
+                    resultFromOuterActivityObtained = true;
+                    LatLng alertResultLocation = new LatLng(result.getExtras().getDouble("alertLatitude"),result.getExtras().getDouble("alertLongitude"));
+                    Log.d(TAG,"Esta es la ubicacion de la alerta: "+alertResultLocation.toString());
+                    CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(alertResultLocation, NEAR_ZOOM);
+                    mMap.animateCamera(cameraUpdate);
+
+
+                }
+            }
+        }
     }
 
     /**

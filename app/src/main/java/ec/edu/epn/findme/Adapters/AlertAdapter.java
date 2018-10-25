@@ -19,16 +19,22 @@ import ec.edu.epn.findme.entity.Alert;
  * Created by David Moncayo on 19/04/2018.
  */
 
-public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.ViewHolder>{
+public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.ViewHolder> {
+
+    public interface OnItemClickListener {
+        void atItemClick(Alert alert);
+    }
 
     private List<Alert> alertsList;
+    private final OnItemClickListener listener;
 
-    public class ViewHolder extends RecyclerView.ViewHolder{
+    public class ViewHolder extends RecyclerView.ViewHolder {
         public TextView type, title, description, location, status;
         public ImageView typeImageView;
         public CheckBox reviewed;
 
-        public ViewHolder(View view){
+
+        public ViewHolder(View view) {
             super(view);
             type = (TextView) view.findViewById(R.id.txtTipoAlerta);
             title = (TextView) view.findViewById(R.id.txtTituloAlerta);
@@ -36,42 +42,45 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.ViewHolder>{
             location = (TextView) view.findViewById(R.id.txtAlertLocation);
             status = (TextView) view.findViewById(R.id.txtEstatusAlerta);
             typeImageView = (ImageView) view.findViewById(R.id.alertImageView);
-            reviewed =(CheckBox) view.findViewById(R.id.chkAlert);
+            reviewed = (CheckBox) view.findViewById(R.id.chkAlert);
         }
     }
 
-    public AlertAdapter(List<Alert> alertsList){
+    public AlertAdapter(List<Alert> alertsList, OnItemClickListener listener) {
         //super(context,alertsList);
         this.alertsList = alertsList;
+        this.listener = listener;
     }
 
     @Override
     public AlertAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.rv_alert_item,parent,false);
+        View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.rv_alert_item, parent, false);
+
         return new AlertAdapter.ViewHolder(itemView);
     }
 
     @Override
     public void onBindViewHolder(AlertAdapter.ViewHolder holder, final int position) {
-        Alert alert = alertsList.get(position);
+        final Alert alert = alertsList.get(position);
         String alertType = "Alert Type: ";
-        holder.type.setText(alertType+alert.getAlertType());
+        holder.type.setText(alertType + alert.getAlertType());
         holder.title.setText(alert.getTitle());
         String alertDescription = "Description: ";
-        holder.description.setText(alertDescription+alert.getDescription());
-        holder.location.setText("Latitud: "+alert.getLocation().getLatitude()+" Longitud: "+alert.getLocation().getLongitude());
+        holder.description.setText(alertDescription + alert.getDescription());
+        holder.location.setText("Latitud: " + alert.getLocation().getLatitude() + " Longitud: " + alert.getLocation().getLongitude());
         String alertStatus = "Status: ";
         holder.status.setText(alert.getStatus());
-        if(alert.getStatus().equals("Pending")){
+
+        if (alert.getStatus().equals("Pending")) {
             holder.status.setTextColor(Color.parseColor("#3867e0"));
-        } else if (alert.getStatus().equals("Rejected")){
+        } else if (alert.getStatus().equals("Rejected")) {
             holder.status.setTextColor(Color.parseColor("#ef6621"));
         } else {
             holder.status.setTextColor(Color.parseColor("#2ba522"));
         }
 
 
-        if(alert.getAlertType().equals("Avistamiento")){
+        if (alert.getAlertType().equals("Avistamiento")) {
             holder.typeImageView.setImageResource(R.drawable.ic_binocular_avistamiento_background);
         }
 
@@ -81,9 +90,17 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.ViewHolder>{
                 AlertAdapter.this.alertsList.get(position).setReviewed(b);
             }
         });
-        if(alert.isReviewed()){
+        if (alert.isReviewed()) {
             holder.reviewed.setChecked(true);
         }
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view) {
+                listener.atItemClick(alert);
+            }
+        });
+
     }
 
     @Override

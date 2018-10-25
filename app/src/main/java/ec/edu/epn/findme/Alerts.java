@@ -1,5 +1,6 @@
 package ec.edu.epn.findme;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -56,8 +57,8 @@ public class Alerts extends AppCompatActivity {
     private int numberOfAlerts;
 
 
-    private final static long SINCE_20_YEARS_AGO = 63070000;
-    private long timeDiff = 864000000;//10 days
+    private final static long SINCE_20_YEARS_AGO = 630720000000l;
+    private long timeDiff = 864000000l;//10 days
     private boolean isUsuarioDinased = false;
     private boolean approveAlert;
     @Override
@@ -109,7 +110,18 @@ public class Alerts extends AppCompatActivity {
         btnRejectAlert.setEnabled(isUsuarioDinased);
 
 
-        adapter =  new AlertAdapter(alertsList);
+        adapter =  new AlertAdapter(alertsList, new AlertAdapter.OnItemClickListener() {
+            @Override
+            public void atItemClick(Alert alert) {
+                Intent intentCarryingAlertData = new Intent();
+                Bundle bundle = new Bundle();
+                bundle.putDouble("alertLatitude",alert.getLocationLatLng().latitude);
+                bundle.putDouble("alertLongitude",alert.getLocationLatLng().longitude);
+                intentCarryingAlertData.putExtras(bundle);
+                setResult(Activity.RESULT_OK, intentCarryingAlertData);
+                finish();
+            }
+        });
 
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
@@ -168,7 +180,8 @@ public class Alerts extends AppCompatActivity {
         if(queryAllFromThisUser){
             searchAlerts = usuarios.document(id).collection("alerts");
         } else {
-            longtimeToSearch = System.currentTimeMillis()-timeDiff;
+
+            longtimeToSearch = System.currentTimeMillis()-SINCE_20_YEARS_AGO;
             searchAlerts = usuarios.document(id).collection("alerts").whereGreaterThanOrEqualTo("alertTimeMillis",longtimeToSearch);
         }
 
