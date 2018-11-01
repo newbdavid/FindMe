@@ -15,6 +15,7 @@ public class ActiveSearch {
     private String description;
     private boolean active;
     private String id;
+    private boolean isFoundYet;
     private transient boolean listSelected;
 
     public boolean isListSelected() {
@@ -25,7 +26,13 @@ public class ActiveSearch {
         this.listSelected = listSelected;
     }
 
+    public boolean isFoundYet() {
+        return isFoundYet;
+    }
 
+    public void setFoundYet(boolean foundYet) {
+        isFoundYet = foundYet;
+    }
 
     public String getId() {
         return id;
