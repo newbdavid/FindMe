@@ -48,7 +48,9 @@ public class ActiveSearchAdapter extends RecyclerView.Adapter<ActiveSearchAdapte
             lastSeen= (TextView) view.findViewById(R.id.txtLastSeen);
             chkActiveSearch = (CheckBox) view.findViewById(R.id.chkActiveSearch);
             context = view.getContext();
+
         }
+
     }
 
 
@@ -59,7 +61,7 @@ public class ActiveSearchAdapter extends RecyclerView.Adapter<ActiveSearchAdapte
     }
 
     @Override
-    public void onBindViewHolder(ActiveSearchAdapter.ViewHolder holder, final int position) {
+    public void onBindViewHolder(final ActiveSearchAdapter.ViewHolder holder, final int position) {
         final ActiveSearch activeSearch = activeSearchesList.get(position);
         holder.name.setText(activeSearch.getName());
         String gender = context.getResources().getString(R.string.gender)+" ";
@@ -85,6 +87,9 @@ public class ActiveSearchAdapter extends RecyclerView.Adapter<ActiveSearchAdapte
 
             @Override
             public void onClick(View view) {
+                //ActiveSearchAdapter.ViewHolder retrievedHolder = (ActiveSearchAdapter.ViewHolder) view.getTag();
+                boolean isSelected = ActiveSearchAdapter.this.activeSearchesList.get(position).isListSelected();
+                holder.chkActiveSearch.setChecked(!isSelected);
                 listener.atItemClick(activeSearch);
             }
         });
@@ -94,4 +99,6 @@ public class ActiveSearchAdapter extends RecyclerView.Adapter<ActiveSearchAdapte
     public int getItemCount() {
         return activeSearchesList.size();
     }
+
+
 }

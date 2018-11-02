@@ -73,54 +73,47 @@ public class ActiveSearches extends AppCompatActivity {
         } else{
             Uid= FirebaseAuth.getInstance().getCurrentUser().getUid();
         }
-
+        layoutManager = new LinearLayoutManager(this);
         adapter = new ActiveSearchAdapter(arrayListActiveSearch, new ActiveSearchAdapter.OnItemClickListener() {
             @Override
             public void atItemClick(ActiveSearch activeSearch) {
-                boolean isChecked = activeSearch.isListSelected();
-                activeSearch.setListSelected(!isChecked);
+                //boolean isChecked = activeSearch.isListSelected();
+                //activeSearch.setListSelected(!isChecked);
             }
         });
-        layoutManager = new LinearLayoutManager(this);
+
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(adapter);
-        btnSeeMapSelectedSearchesIds.setEnabled(true);
-
         activeSearches.whereEqualTo("active",true).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if (task.isSuccessful()) {
                     for (DocumentSnapshot document : task.getResult()) {
-//                        Log.d(TAG, document.getId() + " => " + document.getData() );
-
-                        arrayListActiveSearch.add(document.toObject(ActiveSearch.class));
-                        ids.add(document.getId());
-
+                        Log.d(TAG, document.getId() + " => " + document.getData() );
+                        if(document.getId() != null){
+                            ActiveSearch activeSearch = document.toObject(ActiveSearch.class);
+                            activeSearch.setId(document.getId());
+                            arrayListActiveSearch.add(activeSearch);
+                        }
                     }
-                    
+
+                    btnSeeMapSelectedSearchesIds.setEnabled(true);
+                    adapter.notifyDataSetChanged();
                 } else {
                     Log.d(TAG, "Error getting documents: ", task.getException());
                 }
             }
-
-
         });
-
-
     }
 
-    private void inflateLayout(ArrayList<ActiveSearch> arrayListActiveSearch) {
-
-
-        //lvActiveSearch.setOnClickListener();
-    }
 
     public void entrarConSearchId(View view){
         ArrayList<String> idsActiveSearch = new ArrayList<>();
-
+        Log.d(TAG,"Este es el tamaño de arrayListActiveSearch: "+arrayListActiveSearch.size());
         for(ActiveSearch activeSearch : arrayListActiveSearch){
             if(activeSearch.isListSelected()){
+                Log.d(TAG,"Este es el id de ActiveSearch: "+ activeSearch.getId());
                 idsActiveSearch.add(activeSearch.getId());
 
             }
