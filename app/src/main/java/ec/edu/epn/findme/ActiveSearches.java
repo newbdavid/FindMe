@@ -4,6 +4,9 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -29,21 +32,24 @@ public class ActiveSearches extends AppCompatActivity {
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     CollectionReference activeSearches = db.collection("LocationData").document("Quito").collection("ActiveSearches");
     ArrayList<ActiveSearch> arrayListActiveSearch = new ArrayList<>();
-    ActiveSearch[] activeSearchesArray;
+    //ActiveSearch[] activeSearchesArray;
     ArrayList<String> ids = new ArrayList<>();
     private ListView lvActiveSearch;
     private Button btnSeeMapSelectedSearchesIds;
     private String Uid;
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
+    private RecyclerView recyclerView;
+    private RecyclerView.Adapter adapter;
+    private RecyclerView.LayoutManager layoutManager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_active_searches);
-        lvActiveSearch = (ListView) findViewById(R.id.listViewActiveSearches);
+        //lvActiveSearch = (ListView) findViewById(R.id.listViewActiveSearches);
         btnSeeMapSelectedSearchesIds = (Button) findViewById(R.id.btnGoWithSelectedIds);
         btnSeeMapSelectedSearchesIds.setEnabled(false);
-
+        recyclerView = (RecyclerView) findViewById(R.id.active_searches_recycle_view);
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -68,6 +74,19 @@ public class ActiveSearches extends AppCompatActivity {
             Uid= FirebaseAuth.getInstance().getCurrentUser().getUid();
         }
 
+        adapter = new ActiveSearchAdapter(arrayListActiveSearch, new ActiveSearchAdapter.OnItemClickListener() {
+            @Override
+            public void atItemClick(ActiveSearch activeSearch) {
+                boolean isChecked = activeSearch.isListSelected();
+                activeSearch.setListSelected(!isChecked);
+            }
+        });
+        layoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
+        recyclerView.setAdapter(adapter);
+        btnSeeMapSelectedSearchesIds.setEnabled(true);
+
         activeSearches.whereEqualTo("active",true).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
@@ -78,10 +97,8 @@ public class ActiveSearches extends AppCompatActivity {
                         arrayListActiveSearch.add(document.toObject(ActiveSearch.class));
                         ids.add(document.getId());
 
-
-
                     }
-                    inflateLayout(arrayListActiveSearch);
+                    
                 } else {
                     Log.d(TAG, "Error getting documents: ", task.getException());
                 }
@@ -94,15 +111,7 @@ public class ActiveSearches extends AppCompatActivity {
     }
 
     private void inflateLayout(ArrayList<ActiveSearch> arrayListActiveSearch) {
-        activeSearchesArray = new ActiveSearch[arrayListActiveSearch.size()];
-        for(int i = 0; i<activeSearchesArray.length;i++){
-            activeSearchesArray[i] = arrayListActiveSearch.get(i);
-            activeSearchesArray[i].setId(ids.get(i));
-//            Log.d(TAG,  "Elemento " + i+ " => " + activeSearchesArray[i] );
-        }
-        ActiveSearchAdapter asa = new ActiveSearchAdapter(this,activeSearchesArray);
-        lvActiveSearch.setAdapter(asa);
-        btnSeeMapSelectedSearchesIds.setEnabled(true);
+
 
         //lvActiveSearch.setOnClickListener();
     }
@@ -110,7 +119,7 @@ public class ActiveSearches extends AppCompatActivity {
     public void entrarConSearchId(View view){
         ArrayList<String> idsActiveSearch = new ArrayList<>();
 
-        for(ActiveSearch activeSearch : activeSearchesArray){
+        for(ActiveSearch activeSearch : arrayListActiveSearch){
             if(activeSearch.isListSelected()){
                 idsActiveSearch.add(activeSearch.getId());
 

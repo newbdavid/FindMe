@@ -26,11 +26,11 @@ public class ActiveSearch {
         this.listSelected = listSelected;
     }
 
-    public boolean isFoundYet() {
+    public boolean getIsFoundYet() {
         return isFoundYet;
     }
 
-    public void setFoundYet(boolean foundYet) {
+    public void setIsFoundYet(boolean foundYet) {
         isFoundYet = foundYet;
     }
 
