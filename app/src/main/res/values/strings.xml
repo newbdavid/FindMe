@@ -30,6 +30,7 @@
     </string>
     <string name="title_activity_registro_forum">Sign in</string>
     <string name="active_searches_title">Active Searches</string>
+    <string name="found_people_title">Found</string>
     <string name="active_searches_button_enterToMap">Enter Map</string>
     <string name="latitude">latitude</string>
     <string name="longitude">longitude</string>

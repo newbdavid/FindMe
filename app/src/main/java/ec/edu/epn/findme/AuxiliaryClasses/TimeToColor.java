@@ -19,7 +19,7 @@ public class TimeToColor {
     }
 
     public int getTimeToColor(long diffInMilliseconds){
-        if(diffInMilliseconds>0&&diffInMilliseconds<oneHourInMillis){
+        if(diffInMilliseconds>=0&&diffInMilliseconds<oneHourInMillis){
             Log.d("MapsActivity", "LightGreen millies "+diffInMilliseconds);
             return R.color.zeroToOneHour;
         }
