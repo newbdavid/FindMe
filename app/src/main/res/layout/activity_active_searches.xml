@@ -53,7 +53,15 @@
         >
     </android.support.v4.view.ViewPager>
 
-
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/active_searches_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="@dimen/fab_margin"
+        android:visibility="gone"
+        app:srcCompat="@drawable/add_active_search"
+        app:backgroundTint="@color/colorRegistryButtonsEnd"/>
 
 
 

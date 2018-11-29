@@ -18,6 +18,21 @@ public class ActiveSearch {
     private boolean isFoundYet;
     private transient boolean listSelected;
 
+    public ActiveSearch(){
+
+    }
+    public ActiveSearch(String name, String gender, GeoPoint ultimoAvistamiento, long age, String description, boolean active, String id, boolean isFoundYet, boolean listSelected) {
+        this.name = name;
+        this.gender = gender;
+        this.ultimoAvistamiento = ultimoAvistamiento;
+        this.age = age;
+        this.description = description;
+        this.active = active;
+        this.id = id;
+        this.isFoundYet = isFoundYet;
+        this.listSelected = listSelected;
+    }
+
     public boolean isListSelected() {
         return listSelected;
     }

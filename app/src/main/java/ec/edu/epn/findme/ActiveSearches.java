@@ -1,8 +1,12 @@
 package ec.edu.epn.findme;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -12,7 +16,6 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -28,24 +31,29 @@ import java.util.ArrayList;
 
 import ec.edu.epn.findme.Adapters.ActiveSearchAdapter;
 import ec.edu.epn.findme.entity.ActiveSearch;
+import ec.edu.epn.findme.entity.Usuario;
 
 public class ActiveSearches extends AppCompatActivity  {
     private static final String TAG = ActiveSearches.class.getSimpleName();
+    private static final int NEW_ACTIVE_SEARCH_REQUEST_CODE = 1;
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     CollectionReference activeSearches = db.collection("LocationData").document("Quito").collection("ActiveSearches");
+    CollectionReference userPersonalData = db.collection("UserData").document("Quito").collection("usuarios");
     ArrayList<ActiveSearch> arrayListActiveSearch = new ArrayList<>();
     ArrayList<ActiveSearch> filteredActiveSearchArrayList = new ArrayList<>();
     //ActiveSearch[] activeSearchesArray;
     ArrayList<String> ids = new ArrayList<>();
-    private ListView lvActiveSearch;
+    private FloatingActionButton createActiveSearchFab;
     private Button btnSeeMapSelectedSearchesIds;
-    private String Uid;
+
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
+    private String Uid= FirebaseAuth.getInstance().getCurrentUser().getUid();
     private RecyclerView recyclerView;
     private RecyclerView.Adapter adapter;
     private RecyclerView.LayoutManager layoutManager;
     private ViewPager mViewPager;
+    private Usuario usuario;
     //private Toolbar toolbar;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +66,24 @@ public class ActiveSearches extends AppCompatActivity  {
         btnSeeMapSelectedSearchesIds = (Button) findViewById(R.id.btnGoWithSelectedIds);
         btnSeeMapSelectedSearchesIds.setEnabled(false);
         recyclerView = (RecyclerView) findViewById(R.id.active_searches_recycle_view);
+        createActiveSearchFab = (FloatingActionButton) findViewById(R.id.active_searches_fab);
+        createActiveSearchFab.setVisibility(View.INVISIBLE);
+        //float elevation =  createActiveSearchFab.getElevation();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            createActiveSearchFab.setElevation(0f);
+        }
+
+        createActiveSearchFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Bundle bundle = new Bundle();
+                bundle.putBoolean("usuarioDinased", usuario.isUsuarioDinased());
+                Intent intent = new Intent(ActiveSearches.this, NewActiveSearch.class);
+                intent.putExtras(bundle);
+                //startActivity(intent);
+                startActivityForResult(intent,NEW_ACTIVE_SEARCH_REQUEST_CODE);
+            }
+        });
 
         //toolbar = (Toolbar) findViewById(R.id.activeSearchesToolbar);
         //setSupportActionBar(toolbar);
@@ -74,7 +100,7 @@ public class ActiveSearches extends AppCompatActivity  {
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(adapter);
-
+        setUserTypeAndWelcome();
         mViewPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @Override
             public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
@@ -94,7 +120,7 @@ public class ActiveSearches extends AppCompatActivity  {
         ActionBar.TabListener tabListener = new ActionBar.TabListener() {
 
             @Override
-            public void onTabSelected(ActionBar.Tab tab, android.support.v4.app.FragmentTransaction ft) {
+            public void onTabSelected(ActionBar.Tab tab, FragmentTransaction ft) {
                 filteredActiveSearchArrayList.clear();
                 int tabPosition = tab.getPosition();
                 switch (tabPosition){
@@ -115,12 +141,12 @@ public class ActiveSearches extends AppCompatActivity  {
             }
 
             @Override
-            public void onTabUnselected(ActionBar.Tab tab, android.support.v4.app.FragmentTransaction ft) {
+            public void onTabUnselected(ActionBar.Tab tab, FragmentTransaction ft) {
 
             }
 
             @Override
-            public void onTabReselected(ActionBar.Tab tab, android.support.v4.app.FragmentTransaction ft) {
+            public void onTabReselected(ActionBar.Tab tab, FragmentTransaction ft) {
 
             }
         };
@@ -163,12 +189,14 @@ public class ActiveSearches extends AppCompatActivity  {
                             ActiveSearch activeSearch = document.toObject(ActiveSearch.class);
                             activeSearch.setId(document.getId());
                             arrayListActiveSearch.add(activeSearch);
-                            filteredActiveSearchArrayList.add(activeSearch);
+                            if(!activeSearch.getIsFoundYet()) filteredActiveSearchArrayList.add(activeSearch);
+
                         }
                     }
 
                     btnSeeMapSelectedSearchesIds.setEnabled(true);
                     adapter.notifyDataSetChanged();
+
                 } else {
                     Log.d(TAG, "Error getting documents: ", task.getException());
                 }
@@ -176,6 +204,54 @@ public class ActiveSearches extends AppCompatActivity  {
         });
 
 
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent result) {
+        if (requestCode == NEW_ACTIVE_SEARCH_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+            if(result.hasExtra("createdActiveSearchId")){
+                activeSearches.document(String.valueOf(result.getExtras().getInt("createdActiveSearchId"))).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                                if(document.getId() != null){
+                                    ActiveSearch activeSearch = document.toObject(ActiveSearch.class);
+                                    activeSearch.setId(document.getId());
+                                    arrayListActiveSearch.add(activeSearch);
+                                    if(!activeSearch.getIsFoundYet()) filteredActiveSearchArrayList.add(activeSearch);
+                                }
+                                adapter.notifyDataSetChanged();
+
+
+                        } else {
+                            Toast.makeText(ActiveSearches.this,"Error en obtener la nueva búsqueda ",Toast.LENGTH_SHORT);
+                            Log.d(TAG, "Error getting documents: ", task.getException());
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    private void setUserTypeAndWelcome() {
+        userPersonalData.document(Uid).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    Log.d(TAG, "UserData: " + document.getData());
+                    usuario = document.toObject(Usuario.class);
+                    Toast.makeText(ActiveSearches.this,"Bienvenido "+usuario.getNombres()+"!",Toast.LENGTH_LONG);
+                    Log.d(TAG, "UserData: " + usuario.getNombres());
+                    createActiveSearchFab.setVisibility(View.VISIBLE);
+                    createActiveSearchFab.setEnabled(usuario.isUsuarioDinased());
+
+                    //createActiveSearchFab.set
+
+                }
+            }
+        });
     }
 
 

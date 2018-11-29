@@ -26,7 +26,8 @@
                     android:id="@+id/alert_type"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/alert_type" />
+                    android:hint="@string/alert_type"
+                    android:tooltipText="@string/alert_type"/>
 
             </android.support.design.widget.TextInputLayout>
 

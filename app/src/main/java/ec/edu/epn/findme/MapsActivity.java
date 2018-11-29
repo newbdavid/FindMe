@@ -6,6 +6,7 @@ import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -89,6 +90,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int FASTEST_PERMITED_LOCATION_INTERVAL = 5000;
     private static final int ALERTS_REQUEST_CODE = 1;
     private static final String TAG = MapsActivity.class.getSimpleName();
+    private final int TASK_COMPLETED = 1;
+    private final int TASK_FAILED = 0;
 
     private GoogleMap mMap;
     private boolean mLocationPermissionGranted = false;
@@ -486,7 +489,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
             firstPolyline.setPoints(points);
         }
-        //listenToUpdatesFromUsersWithSameSearchIds();
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+                listenToUpdatesFromUsersWithSameSearchIds();
+            }
+        }, 10000);
+        //
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
 
@@ -816,7 +827,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if (task.isSuccessful()) {
+
                     for (DocumentSnapshot document : task.getResult()) {
+
                         Log.d(TAG, document.getId() + " => " + document.getData());
                         ArrayList<String> searchIdsFromForeignUser = (ArrayList<String>) document.get("activeSearches");
                         Log.d(TAG, "Contenido de este ID: " + searchIdsFromForeignUser);
@@ -829,7 +842,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 Log.d(TAG, "Entro para dibujar");
                                 i = searchIdsFromForeignUser.size();
                                 userIdsOnSameSearches.add(document.getId());
-                                getTrackInformation(document.getId());
+
                                 getAlertsInformation(document.getId());
                             }
 
@@ -837,7 +850,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 //                            }
                     }
-                    listenToUpdatesFromUsersWithSameSearchIds();
+
+
                 } else {
                     Log.d(TAG, "Error getting documents: ", task.getException());
                 }
@@ -850,10 +864,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void listenToUpdatesFromUsersWithSameSearchIds() {
         Log.d(TAG,"Entro a escuchar ");
         listenerRegistrations = new ArrayList<>();
-
+        long milliesNow = System.currentTimeMillis();
         for(String userID : userIdsOnSameSearches){
             Log.d(TAG,"Este es el userID: "+userID);
-            ListenerRegistration listenerRegistration = usuarios.document(userID).collection("tracks").addSnapshotListener(new EventListener<QuerySnapshot>() {
+            ListenerRegistration listenerRegistration = usuarios.document(userID).collection("tracks").whereGreaterThanOrEqualTo("lastTraveledMillis",milliesNow).addSnapshotListener(new EventListener<QuerySnapshot>() {
                 @Override
                 public void onEvent(QuerySnapshot snapshots, FirebaseFirestoreException e) {
                     if (e != null) {
@@ -862,21 +876,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                     //for (DocumentSnapshot doc : snapshots.getDocuments()) {
                     for (DocumentChange doc : snapshots.getDocumentChanges()) {
-                        /*switch (dc.getType()) {
+                        switch (doc.getType()) {
                             case ADDED:
-                                Log.d(TAG, "New city: " + dc.getDocument().getData());
+                                Log.d(TAG,"ACTUALIZACION Esto fue obtenido: "+doc.getDocument().getId()+"tiempo: "+doc.getDocument().getDate("lastTraveled"));
+                                if(doc.getDocument().getId() != null){
+                                    drawLineToMap(doc.getDocument().toObject(TrackObject.class));
+                                }
                                 break;
                             case MODIFIED:
-                                Log.d(TAG, "Modified city: " + dc.getDocument().getData());
+                                Log.d(TAG, "Modified city: " + doc.getDocument().getData());
                                 break;
                             case REMOVED:
-                                Log.d(TAG, "Removed city: " + dc.getDocument().getData());
+                                Log.d(TAG, "Removed city: " + doc.getDocument().getData());
                                 break;
-                        }*/
-                        Log.d(TAG,"ACTUALIZACION Esto fue obtenido: "+doc.getDocument().getId()+"tiempo: "+doc.getDocument().getDate("lastTraveled"));
-                        if(doc.getDocument().getId() != null){
-                            drawLineToMap(doc.getDocument().toObject(TrackObject.class));
                         }
+
 
                     }
                 }
@@ -925,6 +939,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         usuarios.document(id).collection("tracks").whereGreaterThanOrEqualTo("lastTraveledMillis", longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if (task.isSuccessful()) {
@@ -939,11 +954,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         drawLineToMap(document.toObject(TrackObject.class));
 
                     }
-                } else {
+
 
                 }
             }
         });
+
+
     }
 
     private void drawLineToMap(TrackObject trackObject) {
@@ -951,7 +968,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         long diffInMilliseconds = System.currentTimeMillis() - trackObject.getLastTraveled().getTime();
         Log.v(TAG,"DIferencia de tiempo: en millis"+diffInMilliseconds);
-        String friendlyTimePastLastTraveled = getTimePastLastTraveled(diffInMilliseconds<0?-diffInMilliseconds:diffInMilliseconds);
+        String friendlyTimePastLastTraveled = getTimePastLastTraveled(diffInMilliseconds);
         TimeToColor timeToColor = new TimeToColor();
         int polylineColor = timeToColor.getTimeToColor(diffInMilliseconds);
         Polyline trackedPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(this, polylineColor)));

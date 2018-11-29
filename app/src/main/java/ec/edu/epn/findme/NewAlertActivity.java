@@ -176,6 +176,7 @@ public class NewAlertActivity extends AppCompatActivity {
                 public void onSuccess(Void aVoid) {
                     Toast.makeText(NewAlertActivity.this,"Alerta agregada",Toast.LENGTH_LONG).show();
                     addNumberOfAlertsToFirebase();
+
                 }
             }).addOnFailureListener(new OnFailureListener() {
                @Override

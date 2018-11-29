@@ -51,6 +51,20 @@
     <string name="gender">Gender: </string>
     <string name="description">Description: </string>
     <string name="last_seen">Last Seen: </string>
+    <string name="active_search_name">Full Name </string>
+    <string name="active_search_description">Person description</string>
+    <string name="active_search_gender">Gender</string>
+    <string name="active_search_Age">Age</string>
+    <string name="active_search_is_found_yet">Is He/She Found Yet</string>
+    <string name="active_search_switch_true">Yes</string>
+    <string name="active_search_switch_false">Very soon</string>
+    <string name="active_search_create">Create Search</string>
+    <!--Strings Related to Errors on Active Searches form-->
+    <string name="full_name_empty">Please, add individual\'s full name</string>
+    <string name="gender_empty">Please, select individual\'s gender</string>
+    <string name="age_empty">For search accuracy, please provide individual\'s age</string>
+    <string name="description_empty">For search accuracy, please provide individual\'s description</string>
+    <string name="last_seen_empty">For search accuracy, please provide individual\'s last known location</string>
 
     <!-- Strings related to login -->
     <string name="prompt_email">Email</string>

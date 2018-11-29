@@ -78,11 +78,10 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="ec.edu.epn.findme.MainActivityMap" />
         </activity>
-        <activity
-            android:name=".ActiveSearches"
-            />
+        <activity android:name=".ActiveSearches" />
         <activity android:name=".Alerts" />
-        <activity android:name=".NewAlertActivity"></activity>
+        <activity android:name=".NewAlertActivity" />
+        <activity android:name=".NewActiveSearch"></activity>
     </application>
 
 </manifest>
