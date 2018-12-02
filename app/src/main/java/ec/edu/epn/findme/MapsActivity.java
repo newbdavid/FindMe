@@ -64,6 +64,7 @@ import com.google.firebase.firestore.SetOptions;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -103,7 +104,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LocationCallback mLocationCallback;
     private boolean isTracking = false;
     private Polyline firstPolyline;
-    private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
+    private final LatLng mDefaultLocation = new LatLng(-0.188827656, -78.485392699);
 
     private Location mLastKnownLocation;
     //private int[] coloursForPolyline = {R.color.zeroToOneHour,R.color.oneToThreeHours,R.color.threeToTwelveHours,R.color.twelveToTwoDays,R.color.twoToFiveDayS};
@@ -188,8 +189,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         super.onSaveInstanceState(savedInstanceState);
         getDeviceLocation();
-        savedInstanceState.putDouble("LastKnownLocationLatitude", mLastKnownLocation.getLatitude());
-        savedInstanceState.putDouble("LastKnownLocationLongitude", mLastKnownLocation.getLongitude());
+        if(mLastKnownLocation != null){
+            savedInstanceState.putDouble("LastKnownLocationLatitude", mLastKnownLocation.getLatitude());
+            savedInstanceState.putDouble("LastKnownLocationLongitude", mLastKnownLocation.getLongitude());
+
+        }
         //TODO get the Vector of polylines
         //savedInstanceState.putDoubleArray("LastPolyline",firstPolyline.getPoints());
 //        if(firstPolyline.getPoints().size()>0){
@@ -204,12 +208,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
+
+        getDeviceLocation();
+
         if (resultFromOuterActivityObtained == false) {
             if (savedInstanceState.getDouble("LastKnownLocationLatitude") != mDefaultLocation.latitude) {
-                mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
-                mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
-                LatLng actualPosition = new LatLng(mLastKnownLocation.getLatitude(),
-                        mLastKnownLocation.getLongitude());
+                if(mLastKnownLocation == null){
+                    mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
+                    mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
+
+                }
+                LatLng actualPosition = new LatLng(savedInstanceState.getDouble("LastKnownLocationLatitude"),
+                        savedInstanceState.getDouble("LastKnownLocationLongitude"));
                 CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
                 mMap.animateCamera(cameraUpdate);
             }
@@ -833,7 +843,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d(TAG, document.getId() + " => " + document.getData());
                         ArrayList<String> searchIdsFromForeignUser = (ArrayList<String>) document.get("activeSearches");
                         Log.d(TAG, "Contenido de este ID: " + searchIdsFromForeignUser);
-                        //if(searchIdsFromForeignUser!=null){
+                        if(searchIdsFromForeignUser == null){
+                            return ;
+                        }
                         for (int i = 0; i < searchIdsFromForeignUser.size(); i++) {
                             Log.d(TAG, "idActiveSearches: " + idsActiveSearches + "ForeignUserId" + searchIdsFromForeignUser);
 //                                if(Arrays.asList(idsActiveSearches).contains(searchIdsFromForeignUser.get(i).toString())){
@@ -965,8 +977,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void drawLineToMap(TrackObject trackObject) {
         //FieldValue timeNow = FieldValue.serverTimestamp();
+        if(trackObject.getLastTraveled() == null){
+            trackObject.setLastTraveled(new Date(trackObject.getLastTraveledMillis()));
+        }
 
-        long diffInMilliseconds = System.currentTimeMillis() - trackObject.getLastTraveled().getTime();
+        long diffInMilliseconds = trackObject.getLastTraveled() == null?5000:System.currentTimeMillis() - trackObject.getLastTraveled().getTime();
         Log.v(TAG,"DIferencia de tiempo: en millis"+diffInMilliseconds);
         String friendlyTimePastLastTraveled = getTimePastLastTraveled(diffInMilliseconds);
         TimeToColor timeToColor = new TimeToColor();
