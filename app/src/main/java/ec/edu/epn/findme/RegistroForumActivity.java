@@ -250,7 +250,7 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
         View focusView = null;
 
         // Check for a valid password, if the user entered one.
-        if (!TextUtils.isEmpty(loginObject.getPassword()) && !isPasswordValid(loginObject.getPassword())) {
+        if (!TextUtils.isEmpty(loginObject.getPassword()) || !isPasswordValid(loginObject.getPassword())) {
             mPasswordView.setError(getString(R.string.error_invalid_password));
             focusView = mPasswordView;
             cancel = true;
@@ -310,17 +310,24 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
+                            if (!task.isSuccessful()) {
+                                Toast.makeText(RegistroForumActivity.this, "Ingreso Fallido"+task.getException(),
+                                        Toast.LENGTH_SHORT).show();
+                                Log.e(TAG,"Ingreso Fallido"+task.getException());
+                            }
                             Log.d(TAG, "createUserWithEmail:onComplete:" + task.isSuccessful());
+
                             newFirebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+                            if(newFirebaseUser == null){
+                                Toast.makeText(RegistroForumActivity.this,"Registro fallo en la conexi'on, por favor intente de nuevo",Toast.LENGTH_LONG).show();
+                                return;
+                            }
                             setRestOfDataToFirebase();
 
                             // If sign in fails, display a message to the user. If sign in succeeds
                             // the auth state listener will be notified and logic to handle the
                             // signed in user can be handled in the listener.
-                            if (!task.isSuccessful()) {
-                                Toast.makeText(RegistroForumActivity.this, "Ingreso Fa",
-                                        Toast.LENGTH_SHORT).show();
-                            }
+
 
                             // ...
                         }
@@ -423,7 +430,7 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
 
     private boolean isPasswordValid(String password) {
         //TODO: Replace this with your own logic
-        return password.length() > 4;
+        return password.length() > 5;
     }
 
     /**

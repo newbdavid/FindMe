@@ -6,15 +6,15 @@
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/alertas"
-            android:icon="@drawable/ic_menu_camera"
+            android:icon="@drawable/alerts"
             android:title="Alertas" />
         <item
             android:id="@+id/mis_alertas"
-            android:icon="@drawable/ic_menu_gallery"
+            android:icon="@drawable/my_alerts"
             android:title="Mis Alertas" />
         <item
             android:id="@+id/add_alerta"
-            android:icon="@drawable/ic_menu_slideshow"
+            android:icon="@drawable/ic_binocular_avistamiento_background"
             android:title="Añadir alertas" />
         <item
             android:id="@+id/nav_manage"

@@ -376,8 +376,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             bundle.putStringArrayList("selectedActiveSearchIds", idsActiveSearches);
             bundle.putBoolean("usuarioDinased", isUsuarioDinased);
             bundle.putBoolean("showAllAlerts", true);
-            bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
-            bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
+            if(mLastKnownLocation == null){
+                bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
+                bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
+
+            }
             bundle.putInt("numberOfAlerts", numberOfAlerts);
 
             Intent intent = new Intent(this, Alerts.class);
@@ -391,6 +394,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             bundle.putStringArrayList("selectedActiveSearchIds", idsActiveSearches);
             bundle.putBoolean("usuarioDinased", isUsuarioDinased);
             bundle.putBoolean("showAllAlerts", false);
+            if(mLastKnownLocation == null){
+                bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
+                bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
+
+            }
             bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
             bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
             bundle.putInt("numberOfAlerts", numberOfAlerts);
@@ -412,9 +420,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             intent.putExtras(bundle);
             startActivityForResult(intent, 1);
         } else if (id == R.id.nav_manage) {
-
+            Toast.makeText(this, "Esta función sera implementada en una próxima entrega " , Toast.LENGTH_LONG).show();
         } else if (id == R.id.nav_share) {
-
+            Toast.makeText(this, "Esta función sera implementada en una próxima entrega " , Toast.LENGTH_LONG).show();
         } else if (id == R.id.nav_log_out) {
 
             stopLocationUpdates();
@@ -486,7 +494,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         setActiveSearchesToUserOnFirebase();
 
-        //getPointsAndDrawOtherUsersPoints();
+        getPointsAndDrawOtherUsersPoints();
         mMap.setOnPolylineClickListener(this);
         getUsersLastLocationsAndAddMarkers();
         // Add a marker in Sydney and move the camera
@@ -526,9 +534,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d(TAG, document.getId() + "Current tracks: " + currentNumberOfTracksOnFirebase);
                     } else {
                         Log.d(TAG, document.getId() + "There are no current tracks: " + currentNumberOfTracksOnFirebase);
+                        currentNumberOfTracksOnFirebase = 0;
+                        updateNumberofTracks(username,0,true);
                     }
                     if (document.getLong("numberOfAlerts") != null) {
                         numberOfAlerts = document.getLong("numberOfAlerts").intValue();
+                    } else {
+                        numberOfAlerts = 0;
                     }
 
 
@@ -775,15 +787,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
         });
-        usuarioInvitado2Ref.document(username).set(numberOfTracks, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
+        updateNumberofTracks(username,i,false);
+        /*usuarioInvitado2Ref.document(username).set(numberOfTracks, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.d(TAG, "Entro en los numberOfTracks: ");
                 //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
 
             }
-        });
-        if (currentNumberOfTracksOnFirebase == 0) {
+        });*/
+        /*if (currentNumberOfTracksOnFirebase == 0) {
             Map<String, Object> testData = new HashMap<>();
             testData.put("TestField", "Hola, porfavor arreglate");
             usuarioInvitado2Ref.document(username).set(testData).addOnSuccessListener(new OnSuccessListener<Void>() {
@@ -802,7 +815,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Log.d(TAG, "Borro el dummy field: ");
                 }
             });
-        }
+        }*/
 
         userLastLocations.document(username).set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
@@ -812,6 +825,31 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
         firstPolyline = null;
+    }
+
+    private void updateNumberofTracks(String username,int position, boolean firstTrack) {
+        Map<String, Object> numberOfTracks = new HashMap<>();
+        numberOfTracks.put("numberOfTracks", position + 1 + currentNumberOfTracksOnFirebase);
+        if(!firstTrack){
+            usuarioInvitado2Ref.document(username).set(numberOfTracks, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d(TAG, "Entro en los numberOfTracks: ");
+                    //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+
+                }
+            });
+        } else {
+            usuarioInvitado2Ref.document(username).set(numberOfTracks).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d(TAG, "Entro en los numberOfTracks: ");
+                    //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+
+                }
+            });
+        }
+
     }
 
     private void setUserLastLocation(FieldValue lastTraveledFieldValue, GeoPoint userLastLocation, long lastTraveledMillis) {
@@ -843,22 +881,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d(TAG, document.getId() + " => " + document.getData());
                         ArrayList<String> searchIdsFromForeignUser = (ArrayList<String>) document.get("activeSearches");
                         Log.d(TAG, "Contenido de este ID: " + searchIdsFromForeignUser);
-                        if(searchIdsFromForeignUser == null){
-                            return ;
-                        }
-                        for (int i = 0; i < searchIdsFromForeignUser.size(); i++) {
-                            Log.d(TAG, "idActiveSearches: " + idsActiveSearches + "ForeignUserId" + searchIdsFromForeignUser);
+                        if(searchIdsFromForeignUser != null){
+                            for (int i = 0; i < searchIdsFromForeignUser.size(); i++) {
+                                Log.d(TAG, "idActiveSearches: " + idsActiveSearches + "ForeignUserId" + searchIdsFromForeignUser);
 //                                if(Arrays.asList(idsActiveSearches).contains(searchIdsFromForeignUser.get(i).toString())){
-                            if (idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())) {
+                                if (idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())) {
 
-                                Log.d(TAG, "Entro para dibujar");
-                                i = searchIdsFromForeignUser.size();
-                                userIdsOnSameSearches.add(document.getId());
+                                    Log.d(TAG, "Entro para dibujar");
+                                    i = searchIdsFromForeignUser.size();
+                                    userIdsOnSameSearches.add(document.getId());
+                                    getTrackInformation(document.getId());
+                                    getAlertsInformation(document.getId());
+                                }
 
-                                getAlertsInformation(document.getId());
                             }
-
                         }
+
 
 //                            }
                     }
@@ -892,7 +930,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             case ADDED:
                                 Log.d(TAG,"ACTUALIZACION Esto fue obtenido: "+doc.getDocument().getId()+"tiempo: "+doc.getDocument().getDate("lastTraveled"));
                                 if(doc.getDocument().getId() != null){
-                                    drawLineToMap(doc.getDocument().toObject(TrackObject.class));
+                                    TrackObject trackObjectTraido = doc.getDocument().toObject(TrackObject.class);
+                                    drawLineToMap(trackObjectTraido);
                                 }
                                 break;
                             case MODIFIED:
@@ -983,6 +1022,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         long diffInMilliseconds = trackObject.getLastTraveled() == null?5000:System.currentTimeMillis() - trackObject.getLastTraveled().getTime();
         Log.v(TAG,"DIferencia de tiempo: en millis"+diffInMilliseconds);
+        if(diffInMilliseconds < 0 && diffInMilliseconds > -10000) diffInMilliseconds = - diffInMilliseconds;
         String friendlyTimePastLastTraveled = getTimePastLastTraveled(diffInMilliseconds);
         TimeToColor timeToColor = new TimeToColor();
         int polylineColor = timeToColor.getTimeToColor(diffInMilliseconds);

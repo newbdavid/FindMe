@@ -154,18 +154,20 @@ public class Alerts extends AppCompatActivity {
                         Log.d(TAG, document.getId() + " => " + document.getData() );
                         ArrayList<String> searchIdsFromForeignUser = (ArrayList<String>)document.get("activeSearches");
                         Log.d(TAG, "Contenido de este ID: "+searchIdsFromForeignUser);
-                        //if(searchIdsFromForeignUser!=null){
-                        for(int i =0;i<searchIdsFromForeignUser.size();i++){
-                            Log.d(TAG, "idActiveSearches: "+idsActiveSearches+"ForeignUserId"+searchIdsFromForeignUser);
+                        if(searchIdsFromForeignUser!=null){
+                            for(int i =0;i<searchIdsFromForeignUser.size();i++){
+                                Log.d(TAG, "idActiveSearches: "+idsActiveSearches+"ForeignUserId"+searchIdsFromForeignUser);
 //                                if(Arrays.asList(idsActiveSearches).contains(searchIdsFromForeignUser.get(i).toString())){
-                            if(idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())){
+                                if(idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())){
 
-                                Log.d(TAG, "Entro para traer Alerts");
-                                i=searchIdsFromForeignUser.size();
-                                getAlertsFromThisUser(document.getId(),false);
+                                    Log.d(TAG, "Entro para traer Alerts");
+                                    i=searchIdsFromForeignUser.size();
+                                    getAlertsFromThisUser(document.getId(),false);
+                                }
+
                             }
-
                         }
+
                     }
                 } else {
                     Log.d(TAG, "Error getting documents: ", task.getException());
