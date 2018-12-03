@@ -41,6 +41,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -138,6 +139,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private long timeDiff = 432000000;//5 days
     List<ListenerRegistration> listenerRegistrations;
     List<String> userIdsOnSameSearches;
+    Map<String,Marker> lastLocationsMap;
 
     TextView searcherNameView;
     TextView searcherTypeView;
@@ -150,6 +152,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         currentNumberOfTracksOnFirebase = 0;
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         userIdsOnSameSearches = new ArrayList<>();
+        lastLocationsMap = new HashMap<>();
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -919,7 +922,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d(TAG,"Entro a escuchar ");
         listenerRegistrations = new ArrayList<>();
         long milliesNow = System.currentTimeMillis();
-        for(String userID : userIdsOnSameSearches){
+        for(final String userID : userIdsOnSameSearches){
             Log.d(TAG,"Este es el userID: "+userID);
             ListenerRegistration listenerRegistration = usuarios.document(userID).collection("tracks").whereGreaterThanOrEqualTo("lastTraveledMillis",milliesNow).addSnapshotListener(new EventListener<QuerySnapshot>() {
                 @Override
@@ -952,6 +955,53 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
             listenerRegistrations.add(listenerRegistration);
             //TODO funcion que escuche y cambie el LastLocations, se necesita recuperar ese marker
+            ListenerRegistration listenerLastLocations = userLastLocations.document(userID).addSnapshotListener(new EventListener<DocumentSnapshot>() {
+                @Override
+                public void onEvent(DocumentSnapshot documentSnapshot, FirebaseFirestoreException e) {
+                    if (e != null) {
+                        Log.w(TAG, "listen:error", e);
+                        return;
+                    }
+                    if(documentSnapshot != null && documentSnapshot.exists() && documentSnapshot.toObject(LastLocation.class) != null){
+                        LastLocation updatedLastLocation = documentSnapshot.toObject(LastLocation.class);
+                        LatLng newLocation = new LatLng(updatedLastLocation.getLastUbication().getLatitude(),updatedLastLocation.getLastUbication().getLongitude());
+                        lastLocationsMap.get(userID).setPosition(newLocation);
+                        Log.v(TAG,"Este es el nuevo LastLocation actualizado: "+lastLocationsMap.get(userID).getTag());
+                    }
+                }
+            });
+            listenerRegistrations.add(listenerLastLocations);
+            ListenerRegistration listenerRegistrationAlert = usuarios.document(userID).collection("alerts").whereGreaterThanOrEqualTo("alertTimeMillis",milliesNow).addSnapshotListener(new EventListener<QuerySnapshot>() {
+                @Override
+                public void onEvent(QuerySnapshot snapshots, FirebaseFirestoreException e) {
+                    if (e != null) {
+                        Log.w(TAG, "listen:error", e);
+                        return;
+                    }
+                    //for (DocumentSnapshot doc : snapshots.getDocuments()) {
+                    for (DocumentChange doc : snapshots.getDocumentChanges()) {
+                        switch (doc.getType()) {
+                            case ADDED:
+                                Log.d(TAG,"ACTUALIZACION alerta fue obtenido: "+doc.getDocument().getId()+"tiempo: "+doc.getDocument().getLong("alertTimeMillis"));
+                                if(doc.getDocument().getId() != null){
+                                    Alert alertFetched = doc.getDocument().toObject(Alert.class);
+                                    drawAlertToMap(alertFetched);
+                                }
+                                break;
+                            case MODIFIED:
+                                Log.d(TAG, "Modified city: " + doc.getDocument().getData());
+                                break;
+                            case REMOVED:
+                                Log.d(TAG, "Removed city: " + doc.getDocument().getData());
+                                break;
+                        }
+
+
+                    }
+                }
+            });
+            listenerRegistrations.add(listenerRegistrationAlert);
+
         }
     }
 
@@ -968,7 +1018,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }*/
                         Log.d(TAG, document.getId() + " => " + document.get("description"));
                         Alert alert = document.toObject(Alert.class);
-                        int alertIcon = 0;
+                        drawAlertToMap(alert);
+                        /*int alertIcon = 0;
                         if (alert.getAlertType().equals(AlertTypeEnum.PISTA.toString())) {
                             alertIcon = R.drawable.ic_action_name;
                         } else if (alert.getAlertType().equals(AlertTypeEnum.AVISTAMIENTO.toString())) {
@@ -977,7 +1028,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             //Bitmap bm = BitmapFactory.decodeFile("main/ic_binocular_avistamiento-web.png");
                         }
                         mMap.addMarker(new MarkerOptions().alpha(0.6f).position(alert.getLocationLatLng()).title(alert.getTitle()).icon(BitmapDescriptorFactory.fromResource(alertIcon)));
-
+                        */
 
                     }
                 } else {
@@ -985,6 +1036,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
         });
+    }
+
+    private void drawAlertToMap(Alert alert) {
+        int alertIcon = 0;
+        if (alert.getAlertType().equals(AlertTypeEnum.PISTA.toString())) {
+            alertIcon = R.drawable.ic_action_name;
+        } else if (alert.getAlertType().equals(AlertTypeEnum.AVISTAMIENTO.toString())) {
+            alertIcon = R.drawable.ic_binocular_avistamiento_background;
+            //Bitmap bm = BitmapFactory.decodeResource(getResources(),R.drawable.ic_binocular_avistamiento_background);
+            //Bitmap bm = BitmapFactory.decodeFile("main/ic_binocular_avistamiento-web.png");
+        }
+        mMap.addMarker(new MarkerOptions().alpha(0.6f).position(alert.getLocationLatLng()).title(alert.getTitle()).icon(BitmapDescriptorFactory.fromResource(alertIcon)));
     }
 
     private void getTrackInformation(final String id) {
@@ -1060,7 +1123,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void drawLastSeenUsersMarkers(String userUid, final LastLocation lastLocation) {
+    private void drawLastSeenUsersMarkers(final String userUid, final LastLocation lastLocation) {
         userPersonalData.document(userUid).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
 
             @Override
@@ -1071,7 +1134,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Usuario userFromLastLocation = document.toObject(Usuario.class);
                     Log.d(TAG, "UserData: " + userFromLastLocation.getNombres());
                     String nameToShow = userFromLastLocation.getNombres() + " " + userFromLastLocation.getApellidos();
-                    mMap.addMarker(new MarkerOptions().alpha(0.4f).position(lastLocation.getLastUbicationLatLng()).title(nameToShow).icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_seeker)));
+                    Marker marker = mMap.addMarker(new MarkerOptions().alpha(0.4f).position(lastLocation.getLastUbicationLatLng()).title(nameToShow).icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_seeker)));
+                    Log.d(TAG,"Este es el id del marker: "+marker.getId());
+                    lastLocationsMap.put(userUid,marker);
                 } else {
                     Log.d(TAG, "Error getting documents of that Uid: ", task.getException());
                 }
