@@ -6,6 +6,7 @@ import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -49,16 +50,21 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import com.google.firebase.firestore.GeoPoint;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -85,6 +91,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int FASTEST_PERMITED_LOCATION_INTERVAL = 5000;
     private static final int ALERTS_REQUEST_CODE = 1;
     private static final String TAG = MapsActivity.class.getSimpleName();
+    private final int TASK_COMPLETED = 1;
+    private final int TASK_FAILED = 0;
 
     private GoogleMap mMap;
     private boolean mLocationPermissionGranted = false;
@@ -96,7 +104,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LocationCallback mLocationCallback;
     private boolean isTracking = false;
     private Polyline firstPolyline;
-    private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
+    private final LatLng mDefaultLocation = new LatLng(-0.188827656, -78.485392699);
 
     private Location mLastKnownLocation;
     //private int[] coloursForPolyline = {R.color.zeroToOneHour,R.color.oneToThreeHours,R.color.threeToTwelveHours,R.color.twelveToTwoDays,R.color.twoToFiveDayS};
@@ -109,7 +117,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
      */
     //private double[][][] polylineArray;
     private int localPointCounter;
-    private int globalMaxPointCounter=0;
+    private int globalMaxPointCounter = 0;
     private int currentNumberOfTracksOnFirebase;
     private int numberOfAlerts;
     private boolean isUsuarioDinased;
@@ -128,6 +136,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     CollectionReference usuarios = db.collection("LocationData").document("Quito").collection("usuarios");
     CollectionReference userPersonalData = db.collection("UserData").document("Quito").collection("usuarios");
     private long timeDiff = 432000000;//5 days
+    List<ListenerRegistration> listenerRegistrations;
+    List<String> userIdsOnSameSearches;
 
     TextView searcherNameView;
     TextView searcherTypeView;
@@ -139,7 +149,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         db.setFirestoreSettings(settings);
         currentNumberOfTracksOnFirebase = 0;
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
+        userIdsOnSameSearches = new ArrayList<>();
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -150,7 +160,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onClick(View view) {
                 startTrackingPosition();
-                Snackbar.make(view, isTracking?"Ha dejado de rastrear su posicion":"Comienza a rastrear su posición", Snackbar.LENGTH_LONG)
+                Snackbar.make(view, isTracking ? "Ha dejado de rastrear su posicion" : "Comienza a rastrear su posición", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
             }
         });
@@ -179,8 +189,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         super.onSaveInstanceState(savedInstanceState);
         getDeviceLocation();
-        savedInstanceState.putDouble("LastKnownLocationLatitude",mLastKnownLocation.getLatitude());
-        savedInstanceState.putDouble("LastKnownLocationLongitude",mLastKnownLocation.getLongitude());
+        if(mLastKnownLocation != null){
+            savedInstanceState.putDouble("LastKnownLocationLatitude", mLastKnownLocation.getLatitude());
+            savedInstanceState.putDouble("LastKnownLocationLongitude", mLastKnownLocation.getLongitude());
+
+        }
         //TODO get the Vector of polylines
         //savedInstanceState.putDoubleArray("LastPolyline",firstPolyline.getPoints());
 //        if(firstPolyline.getPoints().size()>0){
@@ -191,33 +204,44 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     }
+
     @Override
-    public void onRestoreInstanceState(Bundle savedInstanceState){
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        if(resultFromOuterActivityObtained==false){
-            if(savedInstanceState.getDouble("LastKnownLocationLatitude")!= mDefaultLocation.latitude){
-                mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
-                mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
-                LatLng actualPosition = new LatLng(mLastKnownLocation.getLatitude(),
-                        mLastKnownLocation.getLongitude());
-                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
-                mMap.animateCamera(cameraUpdate);
+
+        getDeviceLocation();
+        if(mMap != null){
+            if (resultFromOuterActivityObtained == false) {
+                Log.d(TAG,"Latitud guardada: "+savedInstanceState.getDouble("LastKnownLocationLatitude")+" Longitud guardada: "+savedInstanceState.getDouble("LastKnownLocationLongitude"));
+                Double ultimaLatitudGuardada = new Double(savedInstanceState.getDouble("LastKnownLocationLatitude"));
+                if (ultimaLatitudGuardada != null) {
+                /*if(mLastKnownLocation == null){
+                    mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
+                    mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
+
+                }*/
+                    LatLng actualPosition = new LatLng(savedInstanceState.getDouble("LastKnownLocationLatitude"),
+                            savedInstanceState.getDouble("LastKnownLocationLongitude"));
+                    CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
+                    mMap.animateCamera(cameraUpdate);
+                }
             }
+
+            rutasRecorridas = savedInstanceState.getParcelableArrayList("PolylineArrayList");
+            List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size() - 1).getPolyline().getPoints();
+            Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
+            firstPolyline.setPoints(points);
+            resultFromOuterActivityObtained = false;
         }
 
-        rutasRecorridas = savedInstanceState.getParcelableArrayList("PolylineArrayList");
-        List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size()-1).getPolyline().getPoints();
-        Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
-        firstPolyline.setPoints(points);
-        resultFromOuterActivityObtained = false;
     }
 
     private void getLocationPermission() {
-    /*
-     * Request location permission, so that we can get the location of the
-     * device. The result of the permission request is handled by a callback,
-     * onRequestPermissionsResult.
-     */
+        /*
+         * Request location permission, so that we can get the location of the
+         * device. The result of the permission request is handled by a callback,
+         * onRequestPermissionsResult.
+         */
         if (ContextCompat.checkSelfPermission(this.getApplicationContext(),
                 android.Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -266,10 +290,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void getDeviceLocation() {
-    /*
-     * Get the best and most recent location of the device, which may be null in rare
-     * cases when a location is not available.
-     */
+        /*
+         * Get the best and most recent location of the device, which may be null in rare
+         * cases when a location is not available.
+         */
         try {
             if (mLocationPermissionGranted) {
                 Task locationResult = mFusedLocationProviderClient.getLastLocation();
@@ -317,6 +341,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             drawer.closeDrawer(GravityCompat.START);
         } else {
             stopLocationUpdates();
+            removeTrackAndLastLocationListeners();
             super.onBackPressed();
         }
     }
@@ -352,51 +377,63 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (id == R.id.alertas) {
             getDeviceLocation();
             Bundle bundle = new Bundle();
-            bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
-            bundle.putBoolean("usuarioDinased",isUsuarioDinased);
-            bundle.putBoolean("showAllAlerts",true);
-            bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
-            bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
-            bundle.putInt("numberOfAlerts",numberOfAlerts);
+            bundle.putStringArrayList("selectedActiveSearchIds", idsActiveSearches);
+            bundle.putBoolean("usuarioDinased", isUsuarioDinased);
+            bundle.putBoolean("showAllAlerts", true);
+            if(mLastKnownLocation == null){
+                bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
+                bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
+
+            }
+            bundle.putInt("numberOfAlerts", numberOfAlerts);
 
             Intent intent = new Intent(this, Alerts.class);
             intent.putExtras(bundle);
             //startActivity(intent);
-            startActivityForResult(intent,ALERTS_REQUEST_CODE);
+            startActivityForResult(intent, ALERTS_REQUEST_CODE);
 
         } else if (id == R.id.mis_alertas) {
             getDeviceLocation();
             Bundle bundle = new Bundle();
-            bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
-            bundle.putBoolean("usuarioDinased",isUsuarioDinased);
-            bundle.putBoolean("showAllAlerts",false);
-            bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
-            bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
-            bundle.putInt("numberOfAlerts",numberOfAlerts);
+            bundle.putStringArrayList("selectedActiveSearchIds", idsActiveSearches);
+            bundle.putBoolean("usuarioDinased", isUsuarioDinased);
+            bundle.putBoolean("showAllAlerts", false);
+            if(mLastKnownLocation == null){
+                bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
+                bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
+
+            }
+            bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
+            bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
+            bundle.putInt("numberOfAlerts", numberOfAlerts);
 
             Intent intent = new Intent(this, Alerts.class);
             intent.putExtras(bundle);
-            startActivityForResult(intent,ALERTS_REQUEST_CODE);
+            startActivityForResult(intent, ALERTS_REQUEST_CODE);
         } else if (id == R.id.add_alerta) {
             getDeviceLocation();
             Bundle bundle = new Bundle();
-            bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
-            bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
-            bundle.putInt("numberOfAlerts",numberOfAlerts);
-            bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
+            bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
+            bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
+            bundle.putInt("numberOfAlerts", numberOfAlerts);
+            bundle.putStringArrayList("selectedActiveSearchIds", idsActiveSearches);
             bundle.putString("Uid", username);
-            bundle.putBoolean("usuarioDinased",isUsuarioDinased);
+            bundle.putBoolean("usuarioDinased", isUsuarioDinased);
 
             Intent intent = new Intent(this, NewAlertActivity.class);
             intent.putExtras(bundle);
-            startActivityForResult(intent,1);
+            startActivityForResult(intent, 1);
         } else if (id == R.id.nav_manage) {
-
+            Toast.makeText(this, "Esta función sera implementada en una próxima entrega " , Toast.LENGTH_LONG).show();
         } else if (id == R.id.nav_share) {
-
+            Toast.makeText(this, "Esta función sera implementada en una próxima entrega " , Toast.LENGTH_LONG).show();
         } else if (id == R.id.nav_log_out) {
+
+            stopLocationUpdates();
+            removeTrackAndLastLocationListeners();
+
             FirebaseAuth.getInstance().signOut();
-            Intent i = new Intent(MapsActivity.this,RegistroActivity.class);
+            Intent i = new Intent(MapsActivity.this, RegistroActivity.class);
             startActivity(i);
         }
 
@@ -405,15 +442,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return true;
     }
 
+
+
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent result){
-        if(requestCode == ALERTS_REQUEST_CODE){
-            if(resultCode == Activity.RESULT_OK){
+    protected void onActivityResult(int requestCode, int resultCode, Intent result) {
+        if (requestCode == ALERTS_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
                 Bundle resultData = result.getExtras();
-                if(result.hasExtra("alertLatitude")&&result.hasExtra("alertLongitude")){
+                if (result.hasExtra("alertLatitude") && result.hasExtra("alertLongitude")) {
                     resultFromOuterActivityObtained = true;
-                    LatLng alertResultLocation = new LatLng(result.getExtras().getDouble("alertLatitude"),result.getExtras().getDouble("alertLongitude"));
-                    Log.d(TAG,"Esta es la ubicacion de la alerta: "+alertResultLocation.toString());
+                    LatLng alertResultLocation = new LatLng(result.getExtras().getDouble("alertLatitude"), result.getExtras().getDouble("alertLongitude"));
+                    Log.d(TAG, "Esta es la ubicacion de la alerta: " + alertResultLocation.toString());
                     CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(alertResultLocation, NEAR_ZOOM);
                     mMap.animateCamera(cameraUpdate);
 
@@ -437,14 +476,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mMap = googleMap;
         Log.d(TAG, "Entro por aqui!");
-        Intent intent =  getIntent();
-        if(intent.hasExtra("selectedActiveSearchIds")){
-        idsActiveSearches = intent.getExtras().getStringArrayList("selectedActiveSearchIds");
-        Log.d(TAG, "ActiveSearches: "+idsActiveSearches  );
+        Intent intent = getIntent();
+        if (intent.hasExtra("selectedActiveSearchIds")) {
+            idsActiveSearches = intent.getExtras().getStringArrayList("selectedActiveSearchIds");
+            idsActiveSearches.remove(null);
+            Log.d(TAG, "ActiveSearches: " + idsActiveSearches);
+
         }
-        if(intent.hasExtra("Uid")){
+        if (intent.hasExtra("Uid")) {
             //idsActiveSearches = intent.getExtras().getStringArrayList("selectedActiveSearchIds");
-            Log.d(TAG, "Uid: "+intent.getExtras().getString("Uid")  );
+            Log.d(TAG, "Uid: " + intent.getExtras().getString("Uid"));
             username = intent.getExtras().getString("Uid");
         }
         searcherNameView = (TextView) findViewById(R.id.nav_header_nombres_registro);
@@ -454,8 +495,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         updateLocationUI();
         getDeviceLocation();
         getCurrentnumberOfTracksAndAlertsInFirebase();
+
         setActiveSearchesToUserOnFirebase();
-        //getPointsAndDrawOtherUsersPoints();
+
+        getPointsAndDrawOtherUsersPoints();
         mMap.setOnPolylineClickListener(this);
         getUsersLastLocationsAndAddMarkers();
         // Add a marker in Sydney and move the camera
@@ -463,38 +506,53 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.addMarker(new MarkerOptions().position(homeLocation).title("Marker in Quito"));
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(homeLocation, 10);
         mMap.animateCamera(cameraUpdate);
-        if(rutasRecorridas.size()>0){
-            List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size()-1).getPolyline().getPoints();
+        if (rutasRecorridas.size() > 0) {
+            List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size() - 1).getPolyline().getPoints();
             Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
             firstPolyline.setPoints(points);
         }
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+                listenToUpdatesFromUsersWithSameSearchIds();
+            }
+        }, 10000);
+        //
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
 
+
+
     private void getCurrentnumberOfTracksAndAlertsInFirebase() {
 
-            usuarios.document(username).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>(){
-                @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if(task.isSuccessful()){
-                        DocumentSnapshot document = task.getResult();
-                        if(document.getLong("numberOfTracks")!=null){
+        usuarios.document(username).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document.getLong("numberOfTracks") != null) {
 
-                            currentNumberOfTracksOnFirebase = document.getLong("numberOfTracks").intValue() ;
-                            Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
-                        } else{
-                            Log.d(TAG, document.getId() + "There are no current tracks: "+currentNumberOfTracksOnFirebase);
-                        }
-                        if(document.getLong("numberOfAlerts") != null){
-                            numberOfAlerts = document.getLong("numberOfAlerts").intValue();
-                        }
-
-
-                    }else {
-                        Log.d(TAG, " No se pueden obtener tracks del mismo usuario "+username);
+                        currentNumberOfTracksOnFirebase = document.getLong("numberOfTracks").intValue();
+                        Log.d(TAG, document.getId() + "Current tracks: " + currentNumberOfTracksOnFirebase);
+                    } else {
+                        Log.d(TAG, document.getId() + "There are no current tracks: " + currentNumberOfTracksOnFirebase);
+                        currentNumberOfTracksOnFirebase = 0;
+                        updateNumberofTracks(username,0,true);
                     }
+                    if (document.getLong("numberOfAlerts") != null) {
+                        numberOfAlerts = document.getLong("numberOfAlerts").intValue();
+                    } else {
+                        numberOfAlerts = 0;
+                    }
+
+
+                } else {
+                    Log.d(TAG, " No se pueden obtener tracks del mismo usuario " + username);
                 }
-            });
+            }
+        });
 
     }
 
@@ -502,16 +560,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         userPersonalData.document(username).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if(task.isSuccessful()){
+                if (task.isSuccessful()) {
                     DocumentSnapshot document = task.getResult();
-                    Log.d(TAG, "UserData: "+document.getData());
+                    Log.d(TAG, "UserData: " + document.getData());
                     usuario = document.toObject(Usuario.class);
-                    Log.d(TAG, "UserData: "+usuario.getNombres());
-                    searcherNameView.setText(usuario.getNombres()+" "+usuario.getApellidos());
+                    Log.d(TAG, "UserData: " + usuario.getNombres());
+                    searcherNameView.setText(usuario.getNombres() + " " + usuario.getApellidos());
                     isUsuarioDinased = usuario.isUsuarioDinased();
-                    if(isUsuarioDinased){
+                    if (isUsuarioDinased) {
                         searcherTypeView.setText("DINASED");
-                    } else{
+                    } else {
                         searcherTypeView.setText("Buscador");
                     }
                 }
@@ -536,14 +594,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 //startLocationUpdates();
                 Log.d(TAG, "Muestra posicion actual!");
-                if(isTracking == false){
+                if (isTracking == false) {
                     startLocationUpdates();
-                    fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),ic_stop_navigation));
+                    fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(), ic_stop_navigation));
                     fab.setBackgroundTintList(getResources().getColorStateList(R.color.colorAccent));
                     isTracking = true;
-                }else if (isTracking != false) {
+                } else if (isTracking != false) {
                     stopLocationUpdates();
-                    fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(),R.drawable.ic_navigation_start));
+                    fab.setImageDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_navigation_start));
                     fab.setBackgroundTintList(getResources().getColorStateList(R.color.colorGreenStartNavigation));
                     isTracking = false;
                 }
@@ -584,75 +642,65 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @SuppressWarnings({"MissingPermission"})
     private void startLocationUpdates() {
-            getDeviceLocation();
-            firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(this,R.color.zeroToOneHour)));
-            localPointCounter = 0;
-            mLocationCallback = new LocationCallback() {
-                @Override
-                public void onLocationResult( LocationResult locationResult) {
-                    final double MIN_DISTANCE_TO_ACCEPT_LATLNG = 15;
-                    if (locationResult == null) {
-                        return;
+        getDeviceLocation();
+        firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(this, R.color.zeroToOneHour)));
+        localPointCounter = 0;
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                final double MIN_DISTANCE_TO_ACCEPT_LATLNG = 15;
+                if (locationResult == null) {
+                    return;
+                }
+                if(firstPolyline == null){
+                    firstPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(getApplicationContext(), R.color.zeroToOneHour)));
+                }
+                Log.d(TAG, "GetPoints at start: " + firstPolyline.getPoints().toString());
+                if (firstPolyline.getPoints().isEmpty()) {
+                    Log.d(TAG, "Esta vacia la polyline+: ");
+                    List<LatLng> primerPunto = firstPolyline.getPoints();
+                    primerPunto.add(new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()));
+                    firstPolyline.setPoints(primerPunto);
+                    localPointCounter++;
+                }
+                for (Location location : locationResult.getLocations()) {
+                    //Here's where the magic happens and we start tracking
+                    String textoLatLng = String.valueOf(location.getLatitude()) + String.valueOf(location.getLongitude());
+                    Log.d(TAG, "Location Results: " + textoLatLng);
+                    double distanceBetweenLast2Points = MIN_DISTANCE_TO_ACCEPT_LATLNG;
+                    if (mLastKnownLocation != null) {
+                        distanceBetweenLast2Points = calculateDistanceInMeters(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude(), location.getLatitude(), location.getLongitude());
+                        Log.d(TAG, "Location Results: " + textoLatLng + "Distance Between 2 lastPoints" + distanceBetweenLast2Points);
                     }
-                    Log.d(TAG, "GetPoints at start: " + firstPolyline.getPoints().toString());
-                    if (firstPolyline.getPoints().isEmpty()) {
-                        Log.d(TAG, "Esta vacia la polyline+: " );
-                        List<LatLng> primerPunto = firstPolyline.getPoints();
-                        primerPunto.add(new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()));
-                        firstPolyline.setPoints(primerPunto);
-                        localPointCounter++;
-                    }
-                    for (Location location : locationResult.getLocations()) {
-                        //Here's where the magic happens and we start tracking
-                        String textoLatLng = String.valueOf(location.getLatitude()) + String.valueOf(location.getLongitude());
-                        Log.d(TAG, "Location Results: " + textoLatLng);
-                        double distanceBetweenLast2Points=MIN_DISTANCE_TO_ACCEPT_LATLNG;
-                        if (mLastKnownLocation!=null){
-                            distanceBetweenLast2Points = calculateDistanceInMeters(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude(),location.getLatitude(),location.getLongitude());
-                            Log.d(TAG, "Location Results: " + textoLatLng+"Distance Between 2 lastPoints"+distanceBetweenLast2Points);
-                        }
-                        //Esto luego se podra comentar, es solo para ver cuantas actualizaciones se dieron
-                        mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(),
-                                location.getLongitude()))).setTitle("Aqui estoy");
-                        //firstPolyline.getPoints().add(new LatLng(location.getLatitude(),location.getLongitude()));
-                        if (distanceBetweenLast2Points>=MIN_DISTANCE_TO_ACCEPT_LATLNG) {
-                            List<LatLng> points = firstPolyline.getPoints();
+                    //Esto luego se podra comentar, es solo para ver cuantas actualizaciones se dieron
+                    //mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(),location.getLongitude()))).setTitle("Aqui estoy");
+                    //firstPolyline.getPoints().add(new LatLng(location.getLatitude(),location.getLongitude()));
+                    if (distanceBetweenLast2Points >= MIN_DISTANCE_TO_ACCEPT_LATLNG) {
+                        List<LatLng> points = firstPolyline.getPoints();
 
-                            points.add(new LatLng(location.getLatitude(), location.getLongitude()));
-                            firstPolyline.setPoints(points);
-                            mLastKnownLocation = location;
-                            localPointCounter++;
-                            if(localPointCounter%5==0){
-                                GeoPoint userLastLocation = new GeoPoint(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude());
-                                setUserLastLocation(FieldValue.serverTimestamp(),userLastLocation,System.currentTimeMillis());
-                            }
+                        points.add(new LatLng(location.getLatitude(), location.getLongitude()));
+                        firstPolyline.setPoints(points);
+                        mLastKnownLocation = location;
+                        localPointCounter++;
+                        if (localPointCounter % 5 == 0) {
+                            GeoPoint userLastLocation = new GeoPoint(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude());
+                            setUserLastLocation(FieldValue.serverTimestamp(), userLastLocation, System.currentTimeMillis());
+                            prepareTrackDataToStore();
                         }
                     }
                 }
-            };
-            mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
+            }
+        };
+        mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
 
     }
 
 
-    private void stopLocationUpdates(){
-        if (firstPolyline!=null){
-            Map<String,Object> trackData= new HashMap<>();
-            trackData.put("lastTraveled", FieldValue.serverTimestamp());
-            //polylineVector.add(firstPolyline);
-            TrackObject trackObjectToAdd = new TrackObject();
-            trackObjectToAdd.setLatLngPoints(firstPolyline.getPoints());
-            trackObjectToAdd.setLastTraveledFieldValue(FieldValue.serverTimestamp());
-            trackObjectToAdd.setLastTraveledMillis(System.currentTimeMillis());
-            rutasRecorridas.add(new RutaRecorrida(firstPolyline,FieldValue.serverTimestamp()));
-
-            if(localPointCounter>globalMaxPointCounter){
-                globalMaxPointCounter= localPointCounter;
-                Log.d(TAG, "Número de puntos máximos: "+globalMaxPointCounter );
-            }
-            SetPointsIntoFirebase(trackObjectToAdd,rutasRecorridas.size()-1);
-            mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
-        }
+    private void stopLocationUpdates() {
+       prepareTrackDataToStore();
+       if(mLocationCallback!= null){
+           mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
+       }
 
 
         //Log.d(TAG, "Antes de añadir: "+trackObjectToAdd.getPoints().get(0));
@@ -663,19 +711,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         usuarioInvitado2Ref.document(username).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if(task.isSuccessful()){
+                if (task.isSuccessful()) {
                     DocumentSnapshot document = task.getResult();
-                    if(document.get("activeSearches")!= null){
-                        ArrayList<String> idSearchesFromFirebase = (ArrayList)document.get("activeSearches");
-                        Log.d(TAG, "idSearchesFromFirebase: "+idSearchesFromFirebase);
-                        for(String idSearch : idSearchesFromFirebase){
-                            if(!idsActiveSearches.contains(idSearch)){
+                    if (document.get("activeSearches") != null) {
+                        ArrayList<String> idSearchesFromFirebase = (ArrayList) document.get("activeSearches");
+                        Log.d(TAG, "idSearchesFromFirebase: " + idSearchesFromFirebase);
+                        for (String idSearch : idSearchesFromFirebase) {
+                            if (!idsActiveSearches.contains(idSearch)) {
                                 idsActiveSearches.add(idSearch);
                             }
                         }
                     }
-                    Map<String,Object> activeSearches = new HashMap<>();
-                    activeSearches.put("activeSearches",idsActiveSearches);
+                    Map<String, Object> activeSearches = new HashMap<>();
+                    activeSearches.put("activeSearches", idsActiveSearches);
                     usuarioInvitado2Ref.document(username).set(activeSearches, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
                         @Override
                         public void onSuccess(Void aVoid) {
@@ -686,9 +734,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     });
 
 
-
-
-                }else{
+                } else {
 
                 }
             }
@@ -697,26 +743,47 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-    private void SetPointsIntoFirebase(final TrackObject trackObjectToAdd, int i ) {
+
+
+    private void prepareTrackDataToStore(){
+        if (firstPolyline != null) {
+            Map<String, Object> trackData = new HashMap<>();
+            trackData.put("lastTraveled", FieldValue.serverTimestamp());
+            //polylineVector.add(firstPolyline);
+            TrackObject trackObjectToAdd = new TrackObject();
+            trackObjectToAdd.setLatLngPoints(firstPolyline.getPoints());
+            trackObjectToAdd.setLastTraveledFieldValue(FieldValue.serverTimestamp());
+            trackObjectToAdd.setLastTraveledMillis(System.currentTimeMillis());
+            rutasRecorridas.add(new RutaRecorrida(firstPolyline, FieldValue.serverTimestamp()));
+            if (localPointCounter > globalMaxPointCounter) {
+                globalMaxPointCounter = localPointCounter;
+                Log.d(TAG, "Número de puntos máximos: " + globalMaxPointCounter);
+            }
+            SetPointsIntoFirebase(trackObjectToAdd, rutasRecorridas.size() - 1);
+
+        }
+    }
+
+    private void SetPointsIntoFirebase(final TrackObject trackObjectToAdd, int i) {
         String friendlyTimePastLastTraveled = getTimePastLastTraveled(0);
-        firstPolyline.setTag(friendlyTimePastLastTraveled+"0 segundos");
+        firstPolyline.setTag(friendlyTimePastLastTraveled + "0 segundos");
 
         setUserLastLocation(trackObjectToAdd.getLastTraveledFieldValue(),
-                trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1),trackObjectToAdd.getLastTraveledMillis());
-        final Map<String,Object> lastSeenTrackData = new HashMap<>();
-        lastSeenTrackData.put("lastSeen",trackObjectToAdd.getLastTraveledFieldValue());
-        lastSeenTrackData.put("lastUbication",trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size()-1));
-        lastSeenTrackData.put("lastSeenMillis",trackObjectToAdd.getLastTraveledMillis());
+                trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size() - 1), trackObjectToAdd.getLastTraveledMillis());
+        final Map<String, Object> lastSeenTrackData = new HashMap<>();
+        lastSeenTrackData.put("lastSeen", trackObjectToAdd.getLastTraveledFieldValue());
+        lastSeenTrackData.put("lastUbication", trackObjectToAdd.getPoints().get(trackObjectToAdd.getPoints().size() - 1));
+        lastSeenTrackData.put("lastSeenMillis", trackObjectToAdd.getLastTraveledMillis());
 
-        Map<String,Object> trackData= new HashMap<>();
+        Map<String, Object> trackData = new HashMap<>();
         trackData.put("lastTraveled", trackObjectToAdd.getLastTraveledFieldValue());
-        trackData.put("points",trackObjectToAdd.getPoints());
-        trackData.put("lastTraveledMillis",trackObjectToAdd.getLastTraveledMillis());
+        trackData.put("points", trackObjectToAdd.getPoints());
+        trackData.put("lastTraveledMillis", trackObjectToAdd.getLastTraveledMillis());
 
-        Map<String,Object> numberOfTracks = new HashMap<>();
-        numberOfTracks.put("numberOfTracks",i+1+currentNumberOfTracksOnFirebase);
+        Map<String, Object> numberOfTracks = new HashMap<>();
+        numberOfTracks.put("numberOfTracks", i + 1 + currentNumberOfTracksOnFirebase);
 
-        usuarioInvitado2Ref.document(username).collection("tracks").document("track"+(i+1+currentNumberOfTracksOnFirebase)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
+        usuarioInvitado2Ref.document(username).collection("tracks").document("track" + (i + 1 + currentNumberOfTracksOnFirebase)).set(trackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.d(TAG, "Entro en la base de datos: ");
@@ -724,17 +791,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
         });
-        usuarioInvitado2Ref.document(username).set(numberOfTracks, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
+        updateNumberofTracks(username,i,false);
+        /*usuarioInvitado2Ref.document(username).set(numberOfTracks, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 Log.d(TAG, "Entro en los numberOfTracks: ");
                 //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
 
             }
-        });
-        if(currentNumberOfTracksOnFirebase==0){
-            Map<String,Object> testData = new HashMap<>();
-            testData.put("TestField","Hola, porfavor arreglate");
+        });*/
+        /*if (currentNumberOfTracksOnFirebase == 0) {
+            Map<String, Object> testData = new HashMap<>();
+            testData.put("TestField", "Hola, porfavor arreglate");
             usuarioInvitado2Ref.document(username).set(testData).addOnSuccessListener(new OnSuccessListener<Void>() {
                 @Override
                 public void onSuccess(Void aVoid) {
@@ -743,15 +811,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 }
             });
-            Map<String,Object> toEraseTestData = new HashMap<>();
-            toEraseTestData.put("TestField",FieldValue.delete());
+            Map<String, Object> toEraseTestData = new HashMap<>();
+            toEraseTestData.put("TestField", FieldValue.delete());
             usuarioInvitado2Ref.document(username).update(toEraseTestData).addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
                 public void onComplete(@NonNull Task<Void> task) {
                     Log.d(TAG, "Borro el dummy field: ");
                 }
             });
-        }
+        }*/
 
         userLastLocations.document(username).set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
@@ -763,11 +831,36 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         firstPolyline = null;
     }
 
+    private void updateNumberofTracks(String username,int position, boolean firstTrack) {
+        Map<String, Object> numberOfTracks = new HashMap<>();
+        numberOfTracks.put("numberOfTracks", position + 1 + currentNumberOfTracksOnFirebase);
+        if(!firstTrack){
+            usuarioInvitado2Ref.document(username).set(numberOfTracks, SetOptions.merge()).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d(TAG, "Entro en los numberOfTracks: ");
+                    //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+
+                }
+            });
+        } else {
+            usuarioInvitado2Ref.document(username).set(numberOfTracks).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d(TAG, "Entro en los numberOfTracks: ");
+                    //Log.d(TAG, "Siguientes datos: "+trackObjectToAdd.getPoints().get(0));
+
+                }
+            });
+        }
+
+    }
+
     private void setUserLastLocation(FieldValue lastTraveledFieldValue, GeoPoint userLastLocation, long lastTraveledMillis) {
-        final Map<String,Object> lastSeenTrackData = new HashMap<>();
-        lastSeenTrackData.put("lastSeen",lastTraveledFieldValue);
-        lastSeenTrackData.put("lastUbication",userLastLocation);
-        lastSeenTrackData.put("lastSeenMillis",lastTraveledMillis);
+        final Map<String, Object> lastSeenTrackData = new HashMap<>();
+        lastSeenTrackData.put("lastSeen", lastTraveledFieldValue);
+        lastSeenTrackData.put("lastUbication", userLastLocation);
+        lastSeenTrackData.put("lastSeenMillis", lastTraveledMillis);
 
         userLastLocations.document(username).set(lastSeenTrackData).addOnSuccessListener(new OnSuccessListener<Void>() {
             @Override
@@ -778,59 +871,107 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void getPointsAndDrawOtherUsersPoints (){
+    private void getPointsAndDrawOtherUsersPoints() {
 
 //        for(String idToSearch : idsActiveSearches ){
-            usuarios.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+        usuarios.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
 
-                @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful()) {
-                        for (DocumentSnapshot document : task.getResult()) {
-                            Log.d(TAG, document.getId() + " => " + document.getData() );
-                            ArrayList<String> searchIdsFromForeignUser = (ArrayList<String>)document.get("activeSearches");
-                            Log.d(TAG, "Contenido de este ID: "+searchIdsFromForeignUser);
-                            //if(searchIdsFromForeignUser!=null){
-                                for(int i =0;i<searchIdsFromForeignUser.size();i++){
-                                    Log.d(TAG, "idActiveSearches: "+idsActiveSearches+"ForeignUserId"+searchIdsFromForeignUser);
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()) {
+
+                    for (DocumentSnapshot document : task.getResult()) {
+
+                        Log.d(TAG, document.getId() + " => " + document.getData());
+                        ArrayList<String> searchIdsFromForeignUser = (ArrayList<String>) document.get("activeSearches");
+                        Log.d(TAG, "Contenido de este ID: " + searchIdsFromForeignUser);
+                        if(searchIdsFromForeignUser != null){
+                            for (int i = 0; i < searchIdsFromForeignUser.size(); i++) {
+                                Log.d(TAG, "idActiveSearches: " + idsActiveSearches + "ForeignUserId" + searchIdsFromForeignUser);
 //                                if(Arrays.asList(idsActiveSearches).contains(searchIdsFromForeignUser.get(i).toString())){
-                                    if(idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())){
+                                if (idsActiveSearches.contains(searchIdsFromForeignUser.get(i).toString())) {
 
-                                        Log.d(TAG, "Entro para dibujar");
-                                        i=searchIdsFromForeignUser.size();
-                                        getTrackInformation(document.getId());
-                                        getAlertsInformation(document.getId());
-                                    }
-
+                                    Log.d(TAG, "Entro para dibujar");
+                                    i = searchIdsFromForeignUser.size();
+                                    userIdsOnSameSearches.add(document.getId());
+                                    getTrackInformation(document.getId());
+                                    getAlertsInformation(document.getId());
                                 }
-//                            }
+
+                            }
                         }
-                    } else {
-                        Log.d(TAG, "Error getting documents: ", task.getException());
+
+
+//                            }
                     }
+
+
+                } else {
+                    Log.d(TAG, "Error getting documents: ", task.getException());
                 }
-            });
+            }
+        });
 //        }
 
     }
 
+    private void listenToUpdatesFromUsersWithSameSearchIds() {
+        Log.d(TAG,"Entro a escuchar ");
+        listenerRegistrations = new ArrayList<>();
+        long milliesNow = System.currentTimeMillis();
+        for(String userID : userIdsOnSameSearches){
+            Log.d(TAG,"Este es el userID: "+userID);
+            ListenerRegistration listenerRegistration = usuarios.document(userID).collection("tracks").whereGreaterThanOrEqualTo("lastTraveledMillis",milliesNow).addSnapshotListener(new EventListener<QuerySnapshot>() {
+                @Override
+                public void onEvent(QuerySnapshot snapshots, FirebaseFirestoreException e) {
+                    if (e != null) {
+                        Log.w(TAG, "listen:error", e);
+                        return;
+                    }
+                    //for (DocumentSnapshot doc : snapshots.getDocuments()) {
+                    for (DocumentChange doc : snapshots.getDocumentChanges()) {
+                        switch (doc.getType()) {
+                            case ADDED:
+                                Log.d(TAG,"ACTUALIZACION Esto fue obtenido: "+doc.getDocument().getId()+"tiempo: "+doc.getDocument().getDate("lastTraveled"));
+                                if(doc.getDocument().getId() != null){
+                                    TrackObject trackObjectTraido = doc.getDocument().toObject(TrackObject.class);
+                                    drawLineToMap(trackObjectTraido);
+                                }
+                                break;
+                            case MODIFIED:
+                                Log.d(TAG, "Modified city: " + doc.getDocument().getData());
+                                break;
+                            case REMOVED:
+                                Log.d(TAG, "Removed city: " + doc.getDocument().getData());
+                                break;
+                        }
+
+
+                    }
+                }
+            });
+            listenerRegistrations.add(listenerRegistration);
+            //TODO funcion que escuche y cambie el LastLocations, se necesita recuperar ese marker
+        }
+    }
+
     private void getAlertsInformation(String id) {
-        usuarios.document(id).collection("alerts").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+        usuarios.document(id).collection("alerts").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if(task.isSuccessful()){
-                    for(DocumentSnapshot document : task.getResult()){
+                if (task.isSuccessful()) {
+                    for (DocumentSnapshot document : task.getResult()) {
                         //Log.d(TAG, id + " and "+username);
                         /*if(id.equals(username) ){
                             currentNumberOfTracksOnFirebase+=1;
                             Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
                         }*/
-                        Log.d(TAG, document.getId() + " => " +  document.get("description"));
+                        Log.d(TAG, document.getId() + " => " + document.get("description"));
                         Alert alert = document.toObject(Alert.class);
                         int alertIcon = 0;
-                        if(alert.getAlertType().equals(AlertTypeEnum.PISTA.toString())){
+                        if (alert.getAlertType().equals(AlertTypeEnum.PISTA.toString())) {
                             alertIcon = R.drawable.ic_action_name;
-                        } else if (alert.getAlertType().equals(AlertTypeEnum.AVISTAMIENTO.toString())){
+                        } else if (alert.getAlertType().equals(AlertTypeEnum.AVISTAMIENTO.toString())) {
                             alertIcon = R.drawable.ic_binocular_avistamiento_background;
                             //Bitmap bm = BitmapFactory.decodeResource(getResources(),R.drawable.ic_binocular_avistamiento_background);
                             //Bitmap bm = BitmapFactory.decodeFile("main/ic_binocular_avistamiento-web.png");
@@ -839,7 +980,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
                     }
-                }else {
+                } else {
 
                 }
             }
@@ -848,62 +989,69 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void getTrackInformation(final String id) {
         //long timeDiff = 432000000;//5 days
-        long longtimeToSearch = System.currentTimeMillis()-timeDiff;
+        long longtimeToSearch = System.currentTimeMillis() - timeDiff;
         //usuarios.document(id).collection("tracks").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
 
 
-        usuarios.document(id).collection("tracks").whereGreaterThanOrEqualTo("lastTraveledMillis",longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>(){
+        usuarios.document(id).collection("tracks").whereGreaterThanOrEqualTo("lastTraveledMillis", longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if(task.isSuccessful()){
-                    for(DocumentSnapshot document : task.getResult()){
-                        Log.d(TAG, id + " and "+username);
+                if (task.isSuccessful()) {
+                    for (DocumentSnapshot document : task.getResult()) {
+                        Log.d(TAG, id + " and " + username);
                         /*if(id.equals(username) ){
                             currentNumberOfTracksOnFirebase+=1;
                             Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
                         }*/
-                        Log.d(TAG, document.getId() + " => " +  document.getDate("lastTraveled"));
+                        Log.d(TAG, document.getId() + " => " + document.getDate("lastTraveled"));
 
                         drawLineToMap(document.toObject(TrackObject.class));
 
                     }
-                }else {
+
 
                 }
             }
         });
+
+
     }
 
     private void drawLineToMap(TrackObject trackObject) {
         //FieldValue timeNow = FieldValue.serverTimestamp();
+        if(trackObject.getLastTraveled() == null){
+            trackObject.setLastTraveled(new Date(trackObject.getLastTraveledMillis()));
+        }
 
-        long diffInMilliseconds = System.currentTimeMillis() - trackObject.getLastTraveled().getTime();
-
+        long diffInMilliseconds = trackObject.getLastTraveled() == null?5000:System.currentTimeMillis() - trackObject.getLastTraveled().getTime();
+        Log.v(TAG,"DIferencia de tiempo: en millis"+diffInMilliseconds);
+        if(diffInMilliseconds < 0 && diffInMilliseconds > -10000) diffInMilliseconds = - diffInMilliseconds;
         String friendlyTimePastLastTraveled = getTimePastLastTraveled(diffInMilliseconds);
         TimeToColor timeToColor = new TimeToColor();
         int polylineColor = timeToColor.getTimeToColor(diffInMilliseconds);
-        Polyline trackedPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(this,polylineColor)));
+        Polyline trackedPolyline = mMap.addPolyline(new PolylineOptions().clickable(true).color(ContextCompat.getColor(this, polylineColor)));
         trackedPolyline.setTag(friendlyTimePastLastTraveled);
 
-        List<LatLng> pointsToDraw= new ArrayList<>();
-        for(int i = 0;i<trackObject.getPoints().size();i++){
-            pointsToDraw.add(new LatLng(trackObject.getPoints().get(i).getLatitude(),trackObject.getPoints().get(i).getLongitude()));
+        List<LatLng> pointsToDraw = new ArrayList<>();
+        for (int i = 0; i < trackObject.getPoints().size(); i++) {
+            pointsToDraw.add(new LatLng(trackObject.getPoints().get(i).getLatitude(), trackObject.getPoints().get(i).getLongitude()));
         }
         trackedPolyline.setPoints(pointsToDraw);
 
     }
 
-    public void getUsersLastLocationsAndAddMarkers(){
+    public void getUsersLastLocationsAndAddMarkers() {
         long timeDiff = 432000000;//5 days
-        long longtimeToSearch = System.currentTimeMillis()-timeDiff;
+        long longtimeToSearch = System.currentTimeMillis() - timeDiff;
         //Date timeToSearch = new Date(System.currentTimeMillis()-timeDiff);
-        userLastLocations.whereGreaterThan("lastSeenMillis",longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+        userLastLocations.whereGreaterThan("lastSeenMillis", longtimeToSearch).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if (task.isSuccessful()) {
                     for (DocumentSnapshot document : task.getResult()) {
-                        Log.d(TAG, "LastLocations: "+document.getId() + " => " + document.getData());
-                        drawLastSeenUsersMarkers(document.getId(),document.toObject(LastLocation.class));
+                        Log.d(TAG, "LastLocations: " + document.getId() + " => " + document.getData());
+                        drawLastSeenUsersMarkers(document.getId(), document.toObject(LastLocation.class));
                     }
                 } else {
                     Log.d(TAG, "Error getting documents: ", task.getException());
@@ -913,16 +1061,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void drawLastSeenUsersMarkers(String userUid, final LastLocation lastLocation) {
-        userPersonalData.document(userUid).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>(){
+        userPersonalData.document(userUid).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
 
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if (task.isSuccessful()){
+                if (task.isSuccessful()) {
                     DocumentSnapshot document = task.getResult();
-                    Log.d(TAG, "UserData: "+document.getData());
+                    Log.d(TAG, "UserData: " + document.getData());
                     Usuario userFromLastLocation = document.toObject(Usuario.class);
-                    Log.d(TAG, "UserData: "+userFromLastLocation.getNombres());
-                    String nameToShow = userFromLastLocation.getNombres()+" "+userFromLastLocation.getApellidos();
+                    Log.d(TAG, "UserData: " + userFromLastLocation.getNombres());
+                    String nameToShow = userFromLastLocation.getNombres() + " " + userFromLastLocation.getApellidos();
                     mMap.addMarker(new MarkerOptions().alpha(0.4f).position(lastLocation.getLastUbicationLatLng()).title(nameToShow).icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_seeker)));
                 } else {
                     Log.d(TAG, "Error getting documents of that Uid: ", task.getException());
@@ -933,13 +1081,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onPolylineClick(Polyline polyline) {
-        Toast.makeText(this,"Tiempo desde la ultima pasada "+ polyline.getTag().toString(),Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Tiempo desde la ultima pasada " + polyline.getTag().toString(), Toast.LENGTH_LONG).show();
     }
 
-    
+    private void removeTrackAndLastLocationListeners() {
+        if(listenerRegistrations != null){
+            for(ListenerRegistration listener : listenerRegistrations){
+                listener.remove();
+            }
+        }
 
+    }
 
-    public void putLastTraveledMillisIntoOldData(){
+    public void putLastTraveledMillisIntoOldData() {
 
     }
 
@@ -950,17 +1104,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         List<TimeUnit> units = new ArrayList<TimeUnit>(EnumSet.allOf(TimeUnit.class));
         Collections.reverse(units);
 
-        Map<TimeUnit,Long> timePastLastTraveled = new LinkedHashMap<TimeUnit,Long>();
+        Map<TimeUnit, Long> timePastLastTraveled = new LinkedHashMap<TimeUnit, Long>();
         long milliesRest = diffInMilliseconds;
-        for ( TimeUnit unit : units ) {
-            long diff = unit.convert(milliesRest,TimeUnit.MILLISECONDS);
+        for (TimeUnit unit : units) {
+            long diff = unit.convert(milliesRest, TimeUnit.MILLISECONDS);
             long diffInMilliesForUnit = unit.toMillis(diff);
             milliesRest = milliesRest - diffInMilliesForUnit;
-            timePastLastTraveled.put(unit,diff);
+            timePastLastTraveled.put(unit, diff);
         }
         StringBuilder friendlyTime = new StringBuilder();
-        for(Map.Entry<TimeUnit,Long> entry : timePastLastTraveled.entrySet()){
-            if(entry.getValue()>0){
+        for (Map.Entry<TimeUnit, Long> entry : timePastLastTraveled.entrySet()) {
+            if (entry.getValue() > 0) {
                 friendlyTime.append(entry.getValue())
                         .append(entry.getKey().toString().charAt(0))
                         .append(" ");
@@ -973,6 +1127,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //Method got from StackOverflow :)
     public final static double AVERAGE_RADIUS_OF_EARTH_M = 6371000;
+
     public int calculateDistanceInMeters(double userLat, double userLng,
                                          double venueLat, double venueLng) {
 

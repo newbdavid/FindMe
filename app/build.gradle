@@ -6,6 +6,7 @@ android {
         applicationId "ec.edu.epn.findme"
         minSdkVersion 15
         targetSdkVersion 26
+        multiDexEnabled true
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -41,6 +42,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-core:12.0.0'
     implementation 'com.google.firebase:firebase-auth:12.0.0'
     implementation 'com.crashlytics.sdk.android:crashlytics:2.9.3'
+    implementation 'com.android.support:multidex:1.0.3'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
 }

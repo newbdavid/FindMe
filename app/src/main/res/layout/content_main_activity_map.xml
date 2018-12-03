@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:id="@+id/drawer_layout_main"
     android:orientation="vertical"
+    android:screenOrientation="portrait"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     android:fitsSystemWindows="true"
     tools:openDrawer="start">
@@ -20,6 +21,7 @@
         android:id="@+id/nav_view"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
+        android:screenOrientation="portrait"
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
         app:headerLayout="@layout/nav_header_main_activity_map"

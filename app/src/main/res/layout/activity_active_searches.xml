@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -9,20 +9,13 @@
     android:background="@color/colorRegistry"
     tools:context="ec.edu.epn.findme.ActiveSearches">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/active_searches_title"
-        android:textAlignment="center"
-        android:layout_gravity="center"
-        android:background="@drawable/grey_white_skyblue_background"
-        android:textSize="26sp"/>
-    <ScrollView
+    <android.widget.ScrollView
         android:id="@+id/activeSearchesScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
         <LinearLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:tools="http://schemas.android.com/tools"
             android:id="@+id/activeSearchesLinearLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -30,15 +23,14 @@
             android:paddingBottom="@dimen/activity_vertical_margin"
             android:paddingLeft="@dimen/activity_horizontal_margin"
             android:paddingRight="@dimen/activity_horizontal_margin"
-            android:paddingTop="@dimen/activity_vertical_margin">
+            android:paddingTop="@dimen/activity_vertical_margin"
+            android:background="?attr/selectableItemBackground">
 
-
-
-            <ListView
+            <android.support.v7.widget.RecyclerView
                 android:layout_width="match_parent"
-                android:layout_height="400dp"
-                android:id="@+id/listViewActiveSearches"/>
-
+                android:layout_height="match_parent"
+                android:scrollbars="vertical"
+                android:id="@+id/active_searches_recycle_view"/>
             <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -49,9 +41,29 @@
                 android:onClick="entrarConSearchId"
                 android:textStyle="bold"/>
 
+
         </LinearLayout>
+    </android.widget.ScrollView>
 
-    </ScrollView>
+    <android.support.v4.view.ViewPager
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/activeSearchesViewPager"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        >
+    </android.support.v4.view.ViewPager>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/active_searches_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="@dimen/fab_margin"
+        android:visibility="gone"
+        app:srcCompat="@drawable/add_active_search"
+        app:backgroundTint="@color/colorRegistryButtonsEnd"/>
 
 
-</LinearLayout>
+
+
+</android.support.design.widget.CoordinatorLayout>
