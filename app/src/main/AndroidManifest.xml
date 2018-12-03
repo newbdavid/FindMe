@@ -23,7 +23,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".RegistroActivity">
+        <activity android:name=".RegistroActivity"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -34,7 +35,8 @@
             android:name=".MainActivityMap"
             android:label="@string/title_activity_main_map"
             android:parentActivityName=".RegistroActivity"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:theme="@style/AppTheme.NoActionBar"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="ec.edu.epn.findme.RegistroActivity" />
@@ -42,6 +44,7 @@
         <activity
             android:name=".LoginActivity"
             android:label="@string/title_activity_login"
+            android:screenOrientation="portrait"
             android:parentActivityName=".RegistroActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
@@ -50,7 +53,8 @@
         <activity
             android:name=".RegistroForumActivity"
             android:label="@string/title_activity_registro_forum"
-            android:parentActivityName=".RegistroActivity">
+            android:parentActivityName=".RegistroActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="ec.edu.epn.findme.RegistroActivity" />
@@ -78,10 +82,14 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="ec.edu.epn.findme.MainActivityMap" />
         </activity>
-        <activity android:name=".ActiveSearches" />
-        <activity android:name=".Alerts" />
-        <activity android:name=".NewAlertActivity" />
-        <activity android:name=".NewActiveSearch"></activity>
+        <activity android:name=".ActiveSearches"
+            android:screenOrientation="portrait"/>
+        <activity android:name=".Alerts"
+            android:screenOrientation="portrait"/>
+        <activity android:name=".NewAlertActivity"
+            android:screenOrientation="portrait"/>
+        <activity android:name=".NewActiveSearch"
+            android:screenOrientation="portrait"></activity>
     </application>
 
 </manifest>

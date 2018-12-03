@@ -250,7 +250,7 @@ public class RegistroForumActivity extends AppCompatActivity implements LoaderCa
         View focusView = null;
 
         // Check for a valid password, if the user entered one.
-        if (!TextUtils.isEmpty(loginObject.getPassword()) || !isPasswordValid(loginObject.getPassword())) {
+        if (TextUtils.isEmpty(loginObject.getPassword()) || !isPasswordValid(loginObject.getPassword())) {
             mPasswordView.setError(getString(R.string.error_invalid_password));
             focusView = mPasswordView;
             cancel = true;

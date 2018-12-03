@@ -210,26 +210,30 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onRestoreInstanceState(savedInstanceState);
 
         getDeviceLocation();
-
-        if (resultFromOuterActivityObtained == false) {
-            if (savedInstanceState.getDouble("LastKnownLocationLatitude") != mDefaultLocation.latitude) {
-                if(mLastKnownLocation == null){
+        if(mMap != null){
+            if (resultFromOuterActivityObtained == false) {
+                Log.d(TAG,"Latitud guardada: "+savedInstanceState.getDouble("LastKnownLocationLatitude")+" Longitud guardada: "+savedInstanceState.getDouble("LastKnownLocationLongitude"));
+                Double ultimaLatitudGuardada = new Double(savedInstanceState.getDouble("LastKnownLocationLatitude"));
+                if (ultimaLatitudGuardada != null) {
+                /*if(mLastKnownLocation == null){
                     mLastKnownLocation.setLatitude(savedInstanceState.getDouble("LastKnownLocationLatitude"));
                     mLastKnownLocation.setLongitude(savedInstanceState.getDouble("LastKnownLocationLongitude"));
 
+                }*/
+                    LatLng actualPosition = new LatLng(savedInstanceState.getDouble("LastKnownLocationLatitude"),
+                            savedInstanceState.getDouble("LastKnownLocationLongitude"));
+                    CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
+                    mMap.animateCamera(cameraUpdate);
                 }
-                LatLng actualPosition = new LatLng(savedInstanceState.getDouble("LastKnownLocationLatitude"),
-                        savedInstanceState.getDouble("LastKnownLocationLongitude"));
-                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(actualPosition, NEAR_ZOOM);
-                mMap.animateCamera(cameraUpdate);
             }
+
+            rutasRecorridas = savedInstanceState.getParcelableArrayList("PolylineArrayList");
+            List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size() - 1).getPolyline().getPoints();
+            Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
+            firstPolyline.setPoints(points);
+            resultFromOuterActivityObtained = false;
         }
 
-        rutasRecorridas = savedInstanceState.getParcelableArrayList("PolylineArrayList");
-        List<LatLng> points = rutasRecorridas.get(rutasRecorridas.size() - 1).getPolyline().getPoints();
-        Log.d(TAG, "Lineas: " + points.get(0) + " " + points.get(1));
-        firstPolyline.setPoints(points);
-        resultFromOuterActivityObtained = false;
     }
 
     private void getLocationPermission() {
