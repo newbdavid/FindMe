@@ -380,7 +380,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             bundle.putStringArrayList("selectedActiveSearchIds", idsActiveSearches);
             bundle.putBoolean("usuarioDinased", isUsuarioDinased);
             bundle.putBoolean("showAllAlerts", true);
-            if(mLastKnownLocation == null){
+            if(mLastKnownLocation != null){
                 bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
                 bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
 
@@ -398,7 +398,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             bundle.putStringArrayList("selectedActiveSearchIds", idsActiveSearches);
             bundle.putBoolean("usuarioDinased", isUsuarioDinased);
             bundle.putBoolean("showAllAlerts", false);
-            if(mLastKnownLocation == null){
+            if(mLastKnownLocation != null){
                 bundle.putDouble("alertLatitude", mLastKnownLocation.getLatitude());
                 bundle.putDouble("alertLongitude", mLastKnownLocation.getLongitude());
 

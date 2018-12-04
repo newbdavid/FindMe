@@ -224,8 +224,11 @@ public class Alerts extends AppCompatActivity {
 
     public void agregarNuevaAlerta(View view){
         Bundle bundle = new Bundle();
-        bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
-        bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
+        if(mLastKnownLocation != null){
+            bundle.putDouble("alertLatitude",mLastKnownLocation.getLatitude());
+            bundle.putDouble("alertLongitude",mLastKnownLocation.getLongitude());
+
+        }
         bundle.putInt("numberOfAlerts",numberOfAlerts);
         bundle.putStringArrayList("selectedActiveSearchIds",idsActiveSearches);
         bundle.putString("Uid", username);
