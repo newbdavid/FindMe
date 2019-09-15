@@ -1000,17 +1000,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (task.isSuccessful()) {
                     for (DocumentSnapshot document : task.getResult()) {
                         Log.d(TAG, id + " and " + username);
-                        /*if(id.equals(username) ){
-                            currentNumberOfTracksOnFirebase+=1;
-                            Log.d(TAG, document.getId() + "Current tracks: "+currentNumberOfTracksOnFirebase);
-                        }*/
                         Log.d(TAG, document.getId() + " => " + document.getDate("lastTraveled"));
-
                         drawLineToMap(document.toObject(TrackObject.class));
-
                     }
-
-
                 }
             }
         });
