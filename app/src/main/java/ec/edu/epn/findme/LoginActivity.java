@@ -234,12 +234,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
                             Log.d(TAG, "signInWithEmail:onComplete:" + task.isSuccessful());
-                            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-                            Bundle bundle = new Bundle();
-                            bundle.putString("Uid",user.getUid());
-                            Intent i = new Intent(LoginActivity.this,ActiveSearches.class);
-                            i.putExtras(bundle);
-                            startActivity(i);
+
                             // If sign in fails, display a message to the user. If sign in succeeds
                             // the auth state listener will be notified and logic to handle the
                             // signed in user can be handled in the listener.
@@ -248,8 +243,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                 Toast.makeText(LoginActivity.this, "Login didn't succed",
                                         Toast.LENGTH_SHORT).show();
                             }
-
-                            // ...
+                            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                            if (user!= null){
+                                Bundle bundle = new Bundle();
+                                bundle.putString("Uid",user.getUid());
+                                Intent i = new Intent(LoginActivity.this,ActiveSearches.class);
+                                i.putExtras(bundle);
+                                startActivity(i);
+                            }
                         }
                     });
         }

@@ -8,7 +8,7 @@ android {
         targetSdkVersion 26
         multiDexEnabled true
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.5"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         resValue "string", "google_maps_key", (project.findProperty("GOOGLE_MAPS_API_KEY") ?: "")
         externalNativeBuild {
